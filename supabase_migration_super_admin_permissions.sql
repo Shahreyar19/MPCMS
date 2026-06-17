@@ -124,4 +124,16 @@ create policy "profiles_self_update" on public.profiles
 for update to authenticated using (id = auth.uid())
 with check (id = auth.uid());
 
+alter table public.published_solutions
+add column if not exists owner_id uuid references public.profiles(id) on delete set null;
+
+drop policy if exists "published_solutions_public_read" on public.published_solutions;
+create policy "published_solutions_public_read" on public.published_solutions
+for select to anon, authenticated using (published = true);
+
+drop policy if exists "published_solutions_admin_all" on public.published_solutions;
+create policy "published_solutions_admin_all" on public.published_solutions
+for all to authenticated using (public.is_admin() and owner_id = auth.uid())
+with check (public.is_admin() and owner_id = auth.uid());
+
 commit;

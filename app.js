@@ -3337,25 +3337,51 @@
   async function initSolutionDownloadPage() {
     const target = document.getElementById('solutionDownloadPage');
     const downloadBtn = document.getElementById('downloadSolutionBtn');
+    const previewFrame = document.getElementById('solutionPreviewFrame');
     if (!target || !downloadBtn) return;
     const examId = new URLSearchParams(window.location.search).get('examId') || '';
-    const exam = findExam(examId);
-    if (!exam) {
-      target.innerHTML = '<p class="muted-copy">Exam not found in local database. এই ডিভাইসে exam data import/publish করা না থাকলে solution download করা যাবে না।</p>';
-      downloadBtn.disabled = true;
+    downloadBtn.disabled = true;
+    if (!examId) {
+      target.innerHTML = '<h2>Solution link is invalid</h2>';
+      if (previewFrame) previewFrame.hidden = true;
       return;
     }
-    if (!exam.solutionPublished) {
-      target.innerHTML = `<h3>${escapeHtml(exam.title)}</h3><p class="muted-copy">Solution has not been published yet. Please contact your admin.</p>`;
-      downloadBtn.disabled = true;
+
+    target.innerHTML = '<h2>Loading solution...</h2>';
+    let exam = findExam(examId);
+    if (!exam?.solutionPublished) {
+      try {
+        const publishedPayload = await fetchPublishedSolution(examId);
+        if (publishedPayload) exam = installPublishedSolutionPayload(publishedPayload);
+      } catch (error) {
+        console.warn('Published solution fetch failed:', error?.message || error);
+      }
+    }
+
+    if (!exam || !exam.solutionPublished) {
+      target.innerHTML = '<h2>Solution is not available</h2>';
+      if (previewFrame) previewFrame.hidden = true;
       return;
     }
-    target.innerHTML = `<h3>${escapeHtml(exam.title)}</h3><p class="muted-copy">Solution is published. Tap the button below to download the solution paper.</p>`;
+
+    const solutionHtml = buildSolutionPaperHtml(examId);
+    target.innerHTML = `
+      <h2>${escapeHtml(exam.title || 'Published Solution')}</h2>
+      <div class="solution-public-meta">
+        <span>${escapeHtml(exam.subject || 'Subject')}</span>
+        <span>${escapeHtml(exam.level || 'Exam')}</span>
+        <span>${escapeHtml(exam.version || 'Bangla')}</span>
+      </div>
+    `;
+    if (previewFrame) {
+      previewFrame.hidden = false;
+      previewFrame.srcdoc = solutionHtml;
+    }
     downloadBtn.disabled = false;
     downloadBtn.addEventListener('click', () => {
       const win = window.open('', '_blank', 'width=1100,height=780');
       if (!win) return showToast('Popup blocked by browser.', 'error');
-      win.document.write(buildSolutionPaperHtml(examId));
+      win.document.write(solutionHtml);
       win.document.close();
       waitAndPrintMathWindow(win);
     });
@@ -4294,18 +4320,18 @@
         </label>
       `).join('');
       return `
-        <article class="entity-card" data-admin-access-card="${escapeHtml(admin.id)}">
-          <div class="entity-card__main">
+        <article class="entity-card admin-access-card" data-admin-access-card="${escapeHtml(admin.id)}">
+          <div class="admin-access-card__main">
             <h3>${escapeHtml(admin.full_name || admin.email || 'Admin')}</h3>
             <p>${escapeHtml(admin.email || '')}</p>
             <p class="muted-copy">${admin.role === 'super_admin' ? 'Super admin' : 'Admin'} · ${admin.active ? 'Active' : 'Disabled'}</p>
           </div>
-          <div class="app-form app-form--single">
+          <div class="admin-access-card__panel">
             <label class="checkbox-row checkbox-card">
               <input type="checkbox" data-admin-active ${admin.active ? 'checked' : ''} ${isSelfSuper ? 'disabled' : ''} />
               <span>Account active</span>
             </label>
-            <div class="permission-grid">${moduleControls}</div>
+            <div class="admin-access-card__modules">${moduleControls}</div>
             <div class="entity-actions">
               <button type="button" class="toolbar-button" data-save-admin-access ${isSelfSuper ? 'disabled' : ''}>Save Access</button>
             </div>
