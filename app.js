@@ -72,7 +72,11 @@
     { key: 'devices', label: 'Devices', page: 'devices', href: 'devices.html' },
     { key: 'passwords', label: 'Password', page: 'passwords', href: 'passwords.html' },
   ];
-  const PAGE_PERMISSION = Object.fromEntries(ADMIN_MODULES.map((module) => [module.page, module.key]));
+  const PAGE_PERMISSION = {
+    ...Object.fromEntries(ADMIN_MODULES.map((module) => [module.page, module.key])),
+    'result-analyse': 'analytics',
+    'student-profile': 'students',
+  };
 
   document.addEventListener('DOMContentLoaded', () => { init(); });
 
@@ -422,6 +426,7 @@
   function canAccessPage(page, userOrSession = getSession()) {
     if (page === 'dashboard') return true;
     if (page === 'super-admin') return isSuperAdmin(userOrSession);
+    if (!PAGE_PERMISSION[page]) return false;
     return hasAdminPermission(PAGE_PERMISSION[page], userOrSession);
   }
   function getStateStorageKey() {
@@ -2255,7 +2260,8 @@
       return;
     }
     renderLivePrintPreview(exam);
-    holder.innerHTML = `<a class="toolbar-button" href="create-exam.html?examId=${exam.id}">Edit</a><button type="button" class="toolbar-button ${exam.published ? 'toolbar-button--success' : ''}" data-sidebar-publish="${exam.id}">${exam.published ? 'Published' : 'Publish'}</button><button type="button" class="toolbar-button ${exam.solutionPublished ? 'toolbar-button--success' : ''}" data-sidebar-solution-publish="${exam.id}">${exam.solutionPublished ? 'Solution Published' : 'Solution Publish'}</button><button type="button" class="toolbar-button" data-sidebar-download="${exam.id}">Download</button><button type="button" class="toolbar-button" data-sidebar-print="${exam.id}">Print</button><button type="button" class="toolbar-button" data-sidebar-solution-download="${exam.id}">Solution Download</button><button type="button" class="toolbar-button" data-sidebar-question-docs="${exam.id}">Question Paper Docs</button><button type="button" class="toolbar-button" data-sidebar-solution-docs="${exam.id}">Solution Paper Docs</button><button type="button" class="toolbar-button" data-sidebar-print-omr="${exam.id}">Print OMR</button><a class="toolbar-button" href="result-analyse.html?examId=${exam.id}">Result Analyse</a><button type="button" class="toolbar-button toolbar-button--danger" data-sidebar-delete="${exam.id}">Delete</button>`;
+    holder.innerHTML = `<a class="toolbar-button" data-permission="create_exam" href="create-exam.html?examId=${exam.id}">Edit</a><button type="button" class="toolbar-button ${exam.published ? 'toolbar-button--success' : ''}" data-sidebar-publish="${exam.id}">${exam.published ? 'Published' : 'Publish'}</button><button type="button" class="toolbar-button ${exam.solutionPublished ? 'toolbar-button--success' : ''}" data-sidebar-solution-publish="${exam.id}">${exam.solutionPublished ? 'Solution Published' : 'Solution Publish'}</button><button type="button" class="toolbar-button" data-sidebar-download="${exam.id}">Download</button><button type="button" class="toolbar-button" data-sidebar-print="${exam.id}">Print</button><button type="button" class="toolbar-button" data-sidebar-solution-download="${exam.id}">Solution Download</button><button type="button" class="toolbar-button" data-sidebar-question-docs="${exam.id}">Question Paper Docs</button><button type="button" class="toolbar-button" data-sidebar-solution-docs="${exam.id}">Solution Paper Docs</button><button type="button" class="toolbar-button" data-permission="scan_omr" data-sidebar-print-omr="${exam.id}">Print OMR</button><a class="toolbar-button" data-permission="analytics" href="result-analyse.html?examId=${exam.id}">Result Analyse</a><button type="button" class="toolbar-button toolbar-button--danger" data-sidebar-delete="${exam.id}">Delete</button>`;
+    applyPermissionVisibility(holder);
 
     const refreshPublishUi = (item) => {
       const publishBtn = holder.querySelector('[data-sidebar-publish]');
@@ -3337,13 +3343,16 @@
   async function initSolutionDownloadPage() {
     const target = document.getElementById('solutionDownloadPage');
     const downloadBtn = document.getElementById('downloadSolutionBtn');
+    const openBtn = document.getElementById('openSolutionBtn');
     const previewFrame = document.getElementById('solutionPreviewFrame');
     if (!target || !downloadBtn) return;
     const examId = new URLSearchParams(window.location.search).get('examId') || '';
     downloadBtn.disabled = true;
+    if (openBtn) openBtn.disabled = true;
     if (!examId) {
       target.innerHTML = '<h2>Solution link is invalid</h2>';
       if (previewFrame) previewFrame.hidden = true;
+      if (openBtn) openBtn.disabled = true;
       return;
     }
 
@@ -3361,10 +3370,11 @@
     if (!exam || !exam.solutionPublished) {
       target.innerHTML = '<h2>Solution is not available</h2>';
       if (previewFrame) previewFrame.hidden = true;
+      if (openBtn) openBtn.disabled = true;
       return;
     }
 
-    const solutionHtml = buildSolutionPaperHtml(examId);
+    const solutionHtml = buildResponsiveSolutionHtml(buildSolutionPaperHtml(examId));
     target.innerHTML = `
       <h2>${escapeHtml(exam.title || 'Published Solution')}</h2>
       <div class="solution-public-meta">
@@ -3378,13 +3388,27 @@
       previewFrame.srcdoc = solutionHtml;
     }
     downloadBtn.disabled = false;
-    downloadBtn.addEventListener('click', () => {
+    if (openBtn) openBtn.disabled = false;
+    const openPrintableSolution = () => {
       const win = window.open('', '_blank', 'width=1100,height=780');
       if (!win) return showToast('Popup blocked by browser.', 'error');
       win.document.write(solutionHtml);
       win.document.close();
+      return win;
+    };
+    downloadBtn.addEventListener('click', () => {
+      const win = openPrintableSolution();
+      if (!win) return;
       waitAndPrintMathWindow(win);
     });
+    openBtn?.addEventListener('click', () => {
+      openPrintableSolution();
+    });
+  }
+
+  function buildResponsiveSolutionHtml(html) {
+    const mobileCss = `@media screen and (max-width: 720px){body{padding:6px!important}.paper{max-width:none!important;width:auto!important;margin:0 0 10px!important;padding:10px!important;border-radius:10px!important}.question-grid{column-count:1!important}.board-head-grid{display:block!important}.board-col,.board-col--center{text-align:left!important}.board-col__spacer{display:none!important}.header-logo{position:static!important;width:42px!important;height:42px!important;margin:4px!important}.solution-qr--header{width:auto!important}.option-list--grid{grid-template-columns:1fr!important}.print-question h3{font-size:14px!important}.option-list li{font-size:13px!important}.answer-block,.explanation-block{font-size:12px!important}}`;
+    return String(html || '').replace('</style>', `${mobileCss}</style>`);
   }
 
   function mergePrintConfig(config = {}) {

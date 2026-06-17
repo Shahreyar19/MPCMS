@@ -1538,6 +1538,41 @@ body.theme-dark .summary-card {
   background: #fff;
 }
 
+@media (max-width: 760px) {
+  .solution-public-layout {
+    padding: 18px 10px 34px;
+  }
+
+  .solution-public-card {
+    gap: 14px;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .solution-public-card__head {
+    align-items: flex-start;
+  }
+
+  .solution-public-card__head h1,
+  .solution-public-summary h2 {
+    font-size: 1.25rem;
+  }
+
+  .solution-public-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .solution-preview-frame {
+    min-height: 72vh;
+    border-radius: 12px;
+  }
+
+  .page-shell--solution .topbar {
+    padding-inline: 12px;
+  }
+}
+
 .admin-access-card {
   align-items: stretch;
   gap: 18px;
