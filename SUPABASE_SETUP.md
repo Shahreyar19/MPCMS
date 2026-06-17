@@ -50,6 +50,14 @@ To enable Super Admin access control, run this once too:
 
 This makes `shahreyar202020@gmail.com` the first `super_admin`. Super admin can open `super-admin.html` and choose which modules each normal admin can access.
 
+If any normal admin can already see another admin's exams/questions/students, run this cleanup migration once:
+
+```sql
+-- paste contents of supabase_migration_strict_workspace_isolation.sql
+```
+
+This keeps the super admin workspace and clears normal-admin workspaces so leaked Question Bank/exam data disappears. After this, each admin starts with their own empty workspace unless they already create new data after the cleanup.
+
 Then set your admin invite code:
 
 ```sql

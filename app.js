@@ -59,6 +59,7 @@
   let cloudSaveTimer = null;
   let cloudLifecycleBound = false;
   let cloudWorkspaceVersion = 0;
+  let cloudSyncBlocked = false;
   let supabaseClientPromise = null;
   let openCvPromise = null;
   const QUESTION_LIST_PAGE_SIZE = 50;
@@ -318,6 +319,7 @@
   }
 
   function queueCloudStateSave() {
+    if (cloudSyncBlocked) return;
     clearTimeout(cloudSaveTimer);
     cloudSaveTimer = setTimeout(() => { syncStateToCloud({ retries: 3 }); }, 350);
   }
@@ -336,6 +338,7 @@
   async function hydrateStateFromCloud() {
     try {
       const payload = await cloudflareRequest('/workspace');
+      cloudSyncBlocked = false;
       const row = payload?.data || null;
       cloudWorkspaceVersion = Number(row?.version || 0);
       const cloudData = row?.workspace_data ? JSON.parse(row.workspace_data) : null;
@@ -351,6 +354,15 @@
       Object.assign(state, merged);
       localStorage.setItem(getStateStorageKey(), JSON.stringify(state));
     } catch {
+      cloudSyncBlocked = BACKEND === 'supabase';
+      if (BACKEND === 'supabase') {
+        const freshState = mergeState({});
+        Object.keys(state).forEach((key) => { delete state[key]; });
+        Object.assign(state, freshState);
+        localStorage.setItem(getStateStorageKey(), JSON.stringify(state));
+        console.warn('Cloud hydrate failed. Local workspace was cleared to prevent cross-admin data leakage.');
+        return;
+      }
       console.warn('Cloud hydrate failed. Using local workspace.');
     }
   }
@@ -373,6 +385,7 @@
   }
 
   async function syncStateToCloud({ retries = 1 } = {}) {
+    if (cloudSyncBlocked) return false;
     let lastError = null;
     let cloudState;
     try {

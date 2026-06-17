@@ -1,5 +1,6 @@
 (() => {
   const SESSION_KEY = 'megaprep-session-v1';
+  const WORKSPACE_STORAGE_KEY = 'megaprep-cms-state-v2';
   const DASHBOARD_URL = 'index.html';
   const CLOUDFLARE_API = (window.MPQM_CLOUDFLARE_API || '').replace(/\/+$/, '');
   const BACKEND = window.MPQM_BACKEND || 'cloudflare';
@@ -267,6 +268,7 @@
   }
 
   function saveSession(data) {
+    purgeWorkspaceCacheForLogin(data.user?.id);
     localStorage.setItem(SESSION_KEY, JSON.stringify({
       token: data.token,
       user: data.user,
@@ -277,6 +279,17 @@
       expiresAt: data.expires_at,
       createdAt: new Date().toISOString(),
     }));
+  }
+
+  function purgeWorkspaceCacheForLogin(userId) {
+    const keepSessionKeys = new Set([SESSION_KEY]);
+    Object.keys(localStorage).forEach((key) => {
+      if (keepSessionKeys.has(key)) return;
+      if (key === WORKSPACE_STORAGE_KEY || key.startsWith(`${WORKSPACE_STORAGE_KEY}:`)) {
+        localStorage.removeItem(key);
+      }
+    });
+    if (userId) localStorage.removeItem(`${WORKSPACE_STORAGE_KEY}:${userId}`);
   }
 
   function getSession() {

@@ -150,7 +150,7 @@ as $$
     select 1
     from public.profiles
     where id = auth.uid()
-      and role = 'admin'
+      and role in ('super_admin', 'admin')
       and active = true
   );
 $$;
