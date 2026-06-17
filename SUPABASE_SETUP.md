@@ -34,6 +34,14 @@ Open Supabase Dashboard > SQL Editor, paste and run:
 -- paste contents of supabase_setup.sql
 ```
 
+If you already ran an older schema where every admin saw the same data, run this once after the main schema:
+
+```sql
+-- paste contents of supabase_migration_per_admin_workspace.sql
+```
+
+This assigns the old shared workspace to `shahreyar202020@gmail.com`; every new admin gets a separate empty workspace.
+
 Then set your admin invite code:
 
 ```sql

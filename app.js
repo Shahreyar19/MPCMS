@@ -139,16 +139,18 @@
       return { ok: true };
     }
     if (path === '/workspace' && method === 'GET') {
+      const { data: userData, error: userError } = await client.auth.getUser();
+      if (userError || !userData?.user) throw new Error('Login required.');
       const { data, error } = await client
         .from('app_settings')
-        .select('id, workspace_data, dark_mode, print_config, version, updated_at')
-        .eq('id', 1)
-        .single();
+        .select('id, owner_id, workspace_data, dark_mode, print_config, version, updated_at')
+        .eq('owner_id', userData.user.id)
+        .maybeSingle();
       if (error) throw error;
       return {
         ok: true,
         data: {
-          ...data,
+          ...(data || { owner_id: userData.user.id, workspace_data: {}, print_config: {}, version: 0 }),
           workspace_data: JSON.stringify(data?.workspace_data || {}),
           print_config: JSON.stringify(data?.print_config || {}),
         },
@@ -173,8 +175,11 @@
     }
     if (path === '/profiles/upsert') return { ok: true };
     if (path === '/solutions/publish' && method === 'POST') {
+      const { data: userData, error: userError } = await client.auth.getUser();
+      if (userError || !userData?.user) throw new Error('Login required.');
       const { error } = await client.from('published_solutions').upsert({
         exam_id: body.exam_id,
+        owner_id: userData.user.id,
         published: true,
         payload: body.payload || {},
         updated_at: new Date().toISOString(),
@@ -243,7 +248,7 @@
 
   function loadState() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(getStateStorageKey());
       return raw ? mergeState(JSON.parse(raw)) : structuredClone(defaultState);
     } catch {
       return structuredClone(defaultState);
@@ -264,7 +269,7 @@
   }
 
   function saveState() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem(getStateStorageKey(), JSON.stringify(state));
     queueCloudStateSave();
   }
 
@@ -290,15 +295,17 @@
       const row = payload?.data || null;
       cloudWorkspaceVersion = Number(row?.version || 0);
       const cloudData = row?.workspace_data ? JSON.parse(row.workspace_data) : null;
-      const localHasData = !!(state.exams?.length || state.questions?.length || state.students?.length || state.attempts?.length);
       if (!cloudData || !Object.keys(cloudData).length) {
-        if (localHasData) await syncStateToCloud({ retries: 3 });
+        const freshState = mergeState({});
+        Object.keys(state).forEach((key) => { delete state[key]; });
+        Object.assign(state, freshState);
+        localStorage.setItem(getStateStorageKey(), JSON.stringify(state));
         return;
       }
       const merged = mergeState(cloudData);
       Object.keys(state).forEach((key) => { delete state[key]; });
       Object.assign(state, merged);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(getStateStorageKey(), JSON.stringify(state));
     } catch {
       console.warn('Cloud hydrate failed. Using local workspace.');
     }
@@ -357,6 +364,10 @@
     return false;
   }
   function getSession() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; } }
+  function getStateStorageKey() {
+    const userId = getSession()?.user?.id || '';
+    return userId ? `${STORAGE_KEY}:${userId}` : STORAGE_KEY;
+  }
   function uid(prefix) { return `${prefix}-${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-5)}`; }
 
   function showToast(message, type = 'success') {

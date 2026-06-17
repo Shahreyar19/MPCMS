@@ -29,7 +29,8 @@ create unique index if not exists profiles_email_unique on public.profiles (lowe
 create unique index if not exists profiles_student_id_unique on public.profiles (lower(student_id)) where student_id is not null and student_id <> '';
 
 create table if not exists public.app_settings (
-  id integer primary key check (id = 1),
+  id integer primary key,
+  owner_id uuid not null references public.profiles(id) on delete cascade,
   workspace_data jsonb not null default '{}'::jsonb,
   dark_mode boolean not null default false,
   print_config jsonb not null default '{}'::jsonb,
@@ -38,8 +39,7 @@ create table if not exists public.app_settings (
   updated_by uuid references public.profiles(id) on delete set null
 );
 
-insert into public.app_settings (id) values (1)
-on conflict (id) do nothing;
+create unique index if not exists app_settings_owner_unique on public.app_settings (owner_id);
 
 create table if not exists public.exams (
   id text primary key,
@@ -61,6 +61,7 @@ create table if not exists public.questions (
 
 create table if not exists public.students (
   id text primary key,
+  owner_id uuid references public.profiles(id) on delete set null,
   profile_id uuid references public.profiles(id) on delete set null,
   payload jsonb not null default '{}'::jsonb,
   active boolean not null default true,
@@ -70,6 +71,7 @@ create table if not exists public.students (
 
 create table if not exists public.attempts (
   id text primary key,
+  owner_id uuid references public.profiles(id) on delete set null,
   exam_id text,
   student_id text,
   payload jsonb not null default '{}'::jsonb,
@@ -93,6 +95,7 @@ create table if not exists public.omr_uploads (
 
 create table if not exists public.published_solutions (
   exam_id text primary key,
+  owner_id uuid references public.profiles(id) on delete set null,
   published boolean not null default true,
   payload jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now(),
@@ -103,6 +106,8 @@ create or replace function public.is_admin()
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select exists (
     select 1
@@ -196,11 +201,15 @@ begin
 
   select app_settings.version into current_version
   from public.app_settings
-  where id = 1
+  where owner_id = auth.uid()
   for update;
 
   if current_version is null then
-    insert into public.app_settings (id) values (1);
+    insert into public.app_settings (id, owner_id)
+    values (
+      coalesce((select max(id) + 1 from public.app_settings), 1),
+      auth.uid()
+    );
     current_version := 0;
   end if;
 
@@ -218,7 +227,7 @@ begin
       version = next_version,
       updated_at = now(),
       updated_by = auth.uid()
-  where id = 1;
+  where owner_id = auth.uid();
 
   return query select true, next_version, false;
 end;
@@ -240,40 +249,46 @@ for select to authenticated using (public.is_admin());
 
 drop policy if exists "profiles_self_read" on public.profiles;
 create policy "profiles_self_read" on public.profiles
-for select to authenticated using (id = auth.uid() or public.is_admin());
+for select to authenticated using (id = auth.uid());
 
 drop policy if exists "profiles_self_update" on public.profiles;
 create policy "profiles_self_update" on public.profiles
-for update to authenticated using (id = auth.uid() or public.is_admin())
-with check (id = auth.uid() or public.is_admin());
+for update to authenticated using (id = auth.uid())
+with check (id = auth.uid());
 
 drop policy if exists "app_settings_admin_read" on public.app_settings;
 create policy "app_settings_admin_read" on public.app_settings
-for select to authenticated using (public.is_admin());
+for select to authenticated using (public.is_admin() and owner_id = auth.uid());
 
 drop policy if exists "app_settings_admin_update" on public.app_settings;
 create policy "app_settings_admin_update" on public.app_settings
-for update to authenticated using (public.is_admin()) with check (public.is_admin());
+for update to authenticated using (public.is_admin() and owner_id = auth.uid())
+with check (public.is_admin() and owner_id = auth.uid());
 
 drop policy if exists "exams_admin_all" on public.exams;
 create policy "exams_admin_all" on public.exams
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
+for all to authenticated using (public.is_admin() and owner_id = auth.uid())
+with check (public.is_admin() and owner_id = auth.uid());
 
 drop policy if exists "questions_admin_all" on public.questions;
 create policy "questions_admin_all" on public.questions
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
+for all to authenticated using (public.is_admin() and owner_id = auth.uid())
+with check (public.is_admin() and owner_id = auth.uid());
 
 drop policy if exists "students_admin_all" on public.students;
 create policy "students_admin_all" on public.students
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
+for all to authenticated using (public.is_admin() and owner_id = auth.uid())
+with check (public.is_admin() and owner_id = auth.uid());
 
 drop policy if exists "attempts_admin_all" on public.attempts;
 create policy "attempts_admin_all" on public.attempts
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
+for all to authenticated using (public.is_admin() and owner_id = auth.uid())
+with check (public.is_admin() and owner_id = auth.uid());
 
 drop policy if exists "omr_uploads_admin_all" on public.omr_uploads;
 create policy "omr_uploads_admin_all" on public.omr_uploads
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
+for all to authenticated using (public.is_admin() and created_by = auth.uid())
+with check (public.is_admin() and created_by = auth.uid());
 
 drop policy if exists "published_solutions_public_read" on public.published_solutions;
 create policy "published_solutions_public_read" on public.published_solutions
@@ -281,6 +296,7 @@ for select to anon, authenticated using (published = true);
 
 drop policy if exists "published_solutions_admin_all" on public.published_solutions;
 create policy "published_solutions_admin_all" on public.published_solutions
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
+for all to authenticated using (public.is_admin() and owner_id = auth.uid())
+with check (public.is_admin() and owner_id = auth.uid());
 
 commit;
