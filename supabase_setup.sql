@@ -13,7 +13,8 @@ create table if not exists public.app_private_config (
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  role text not null default 'student' check (role in ('admin', 'student')),
+  role text not null default 'student' check (role in ('super_admin', 'admin', 'student')),
+  permissions jsonb not null default '{}'::jsonb,
   full_name text not null default '',
   email text,
   student_id text,
@@ -113,7 +114,23 @@ as $$
     select 1
     from public.profiles
     where id = auth.uid()
-      and role = 'admin'
+      and role in ('super_admin', 'admin')
+      and active = true
+  );
+$$;
+
+create or replace function public.is_super_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = auth.uid()
+      and role = 'super_admin'
       and active = true
   );
 $$;
@@ -132,7 +149,7 @@ begin
   requested_role := coalesce(new.raw_user_meta_data ->> 'role', 'student');
   invite_code := coalesce(new.raw_user_meta_data ->> 'admin_invite_code', '');
 
-  if requested_role = 'admin' then
+  if requested_role in ('admin', 'super_admin') then
     select value into expected_code
     from public.app_private_config
     where key = 'admin_invite_code';
@@ -154,7 +171,7 @@ begin
   )
   values (
     new.id,
-    case when requested_role = 'admin' then 'admin' else 'student' end,
+    case when requested_role = 'super_admin' then 'super_admin' when requested_role = 'admin' then 'admin' else 'student' end,
     coalesce(new.raw_user_meta_data ->> 'full_name', ''),
     new.email,
     nullif(new.raw_user_meta_data ->> 'student_id', ''),
@@ -172,6 +189,68 @@ begin
     updated_at = now();
 
   return new;
+end;
+$$;
+
+create or replace function public.list_admin_profiles()
+returns table(
+  id uuid,
+  role text,
+  full_name text,
+  email text,
+  permissions jsonb,
+  active boolean,
+  created_at timestamptz,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_super_admin() then
+    raise exception 'Forbidden';
+  end if;
+
+  return query
+  select p.id, p.role, p.full_name, p.email, coalesce(p.permissions, '{}'::jsonb), p.active, p.created_at, p.updated_at
+  from public.profiles p
+  where p.role in ('super_admin', 'admin')
+  order by case when p.role = 'super_admin' then 0 else 1 end, p.created_at asc;
+end;
+$$;
+
+create or replace function public.update_admin_permissions(
+  p_admin_id uuid,
+  p_permissions jsonb,
+  p_active boolean default true
+)
+returns table(ok boolean)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_super_admin() then
+    raise exception 'Forbidden';
+  end if;
+
+  if p_admin_id = auth.uid() then
+    raise exception 'You cannot change your own super admin access.';
+  end if;
+
+  update public.profiles
+  set permissions = coalesce(p_permissions, '{}'::jsonb),
+      active = coalesce(p_active, true),
+      updated_at = now()
+  where id = p_admin_id
+    and role = 'admin';
+
+  if not found then
+    raise exception 'Admin profile not found.';
+  end if;
+
+  return query select true;
 end;
 $$;
 
@@ -249,7 +328,7 @@ for select to authenticated using (public.is_admin());
 
 drop policy if exists "profiles_self_read" on public.profiles;
 create policy "profiles_self_read" on public.profiles
-for select to authenticated using (id = auth.uid());
+for select to authenticated using (id = auth.uid() or public.is_super_admin());
 
 drop policy if exists "profiles_self_update" on public.profiles;
 create policy "profiles_self_update" on public.profiles

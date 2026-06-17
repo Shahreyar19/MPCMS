@@ -42,6 +42,14 @@ If you already ran an older schema where every admin saw the same data, run this
 
 This assigns the old shared workspace to `shahreyar202020@gmail.com`; every new admin gets a separate empty workspace.
 
+To enable Super Admin access control, run this once too:
+
+```sql
+-- paste contents of supabase_migration_super_admin_permissions.sql
+```
+
+This makes `shahreyar202020@gmail.com` the first `super_admin`. Super admin can open `super-admin.html` and choose which modules each normal admin can access.
+
 Then set your admin invite code:
 
 ```sql

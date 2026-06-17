@@ -50,7 +50,15 @@
       });
       if (error) throw error;
       const profile = await getProfile(client, data.user.id);
-      if (body.role && profile.role !== body.role) {
+      if (profile.active === false) {
+        await client.auth.signOut();
+        throw new Error('This account is disabled.');
+      }
+      if (body.role === 'admin' && !['admin', 'super_admin'].includes(profile.role)) {
+        await client.auth.signOut();
+        throw new Error('Invalid role for this login.');
+      }
+      if (body.role && body.role !== 'admin' && profile.role !== body.role) {
         await client.auth.signOut();
         throw new Error('Invalid role for this login.');
       }
@@ -111,6 +119,8 @@
     return {
       id: data.id,
       role: data.role,
+      permissions: data.permissions || {},
+      active: data.active !== false,
       email: data.email || '',
       student_id: data.student_id || '',
       full_name: data.full_name || '',
@@ -132,7 +142,7 @@
   async function redirectIfAdminAlreadyLoggedIn() {
     if (!/admin-login\.html|admin-signup\.html/.test(window.location.pathname)) return;
     const session = getSession();
-    if (!session?.token || session?.user?.role !== 'admin') return;
+    if (!session?.token || !['admin', 'super_admin'].includes(session?.user?.role)) return;
     try {
       await apiRequest('/auth/session');
       window.location.replace(DASHBOARD_URL);
@@ -263,7 +273,7 @@
       role: data.user?.role,
       identifier: data.user?.email || data.user?.student_id || data.user?.id,
       deviceId: `${data.user?.role || 'user'}-${Math.random().toString(36).slice(2, 8)}`,
-      label: data.user?.role === 'admin' ? 'Admin Browser Session' : 'Student Browser Session',
+      label: ['admin', 'super_admin'].includes(data.user?.role) ? 'Admin Browser Session' : 'Student Browser Session',
       expiresAt: data.expires_at,
       createdAt: new Date().toISOString(),
     }));

@@ -62,6 +62,17 @@
   let supabaseClientPromise = null;
   let openCvPromise = null;
   const QUESTION_LIST_PAGE_SIZE = 50;
+  const ADMIN_MODULES = [
+    { key: 'create_exam', label: 'Create Exam', page: 'create-exam', href: 'create-exam.html' },
+    { key: 'handle_exams', label: 'Handle Exams', page: 'handle-exams', href: 'handle-exams.html' },
+    { key: 'question_bank', label: 'Question Bank', page: 'question-bank', href: 'question-bank.html' },
+    { key: 'students', label: 'Students', page: 'students', href: 'students.html' },
+    { key: 'scan_omr', label: 'Scan OMR', page: 'scan-omr', href: 'scan-omr.html' },
+    { key: 'analytics', label: 'Analytics', page: 'analytics', href: 'analytics.html' },
+    { key: 'devices', label: 'Devices', page: 'devices', href: 'devices.html' },
+    { key: 'passwords', label: 'Password', page: 'passwords', href: 'passwords.html' },
+  ];
+  const PAGE_PERMISSION = Object.fromEntries(ADMIN_MODULES.map((module) => [module.page, module.key]));
 
   document.addEventListener('DOMContentLoaded', () => { init(); });
 
@@ -70,7 +81,7 @@
     if (currentPage !== 'solution-download') {
       const allowed = await ensureAdminAccess();
       if (!allowed) return;
-      if (getSession()?.role === 'admin') {
+      if (isAdminLike(getSession())) {
         bindCloudLifecycleSync();
         await hydrateStateFromCloud();
       }
@@ -92,6 +103,7 @@
       case 'analytics': initAnalyticsPage(); break;
       case 'devices': initDevicesPage(); break;
       case 'passwords': initPasswordsPage(); break;
+      case 'super-admin': initSuperAdminPage(); break;
       default: break;
     }
   }
@@ -174,6 +186,20 @@
       return { ok: true, version: row?.version || 0 };
     }
     if (path === '/profiles/upsert') return { ok: true };
+    if (path === '/admin/profiles' && method === 'GET') {
+      const { data, error } = await client.rpc('list_admin_profiles');
+      if (error) throw error;
+      return { ok: true, admins: data || [] };
+    }
+    if (path === '/admin/permissions' && method === 'PUT') {
+      const { error } = await client.rpc('update_admin_permissions', {
+        p_admin_id: body?.admin_id,
+        p_permissions: body?.permissions || {},
+        p_active: body?.active !== false,
+      });
+      if (error) throw error;
+      return { ok: true };
+    }
     if (path === '/solutions/publish' && method === 'POST') {
       const { data: userData, error: userError } = await client.auth.getUser();
       if (userError || !userData?.user) throw new Error('Login required.');
@@ -216,6 +242,8 @@
     return {
       id: data.id,
       role: data.role,
+      permissions: data.permissions || {},
+      active: data.active !== false,
       email: data.email || '',
       student_id: data.student_id || '',
       full_name: data.full_name || '',
@@ -233,9 +261,21 @@
     try {
       const payload = await cloudflareRequest('/auth/session');
       const role = payload?.user?.role;
-      if (studentPages.has(currentPage)) return role === 'student' || role === 'admin';
-      if (role !== 'admin') {
+      const freshUser = payload?.user || {};
+      if (freshUser.active === false) throw new Error('This account is disabled.');
+      const liveSession = getSession();
+      if (liveSession) {
+        liveSession.user = { ...(liveSession.user || {}), ...freshUser };
+        liveSession.role = freshUser.role || liveSession.role;
+        localStorage.setItem(SESSION_KEY, JSON.stringify(liveSession));
+      }
+      if (studentPages.has(currentPage)) return role === 'student' || isAdminLike(freshUser);
+      if (!isAdminLike(freshUser)) {
         window.location.href = 'admin-login.html';
+        return false;
+      }
+      if (!canAccessPage(currentPage, freshUser)) {
+        window.location.href = 'index.html';
         return false;
       }
       return true;
@@ -364,6 +404,26 @@
     return false;
   }
   function getSession() { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; } }
+  function isAdminLike(userOrSession) {
+    const role = userOrSession?.role || userOrSession?.user?.role;
+    return role === 'admin' || role === 'super_admin';
+  }
+  function isSuperAdmin(userOrSession = getSession()) {
+    const role = userOrSession?.role || userOrSession?.user?.role;
+    return role === 'super_admin';
+  }
+  function getPermissionBag(userOrSession = getSession()) {
+    return userOrSession?.permissions || userOrSession?.user?.permissions || {};
+  }
+  function hasAdminPermission(permissionKey, userOrSession = getSession()) {
+    if (!permissionKey || isSuperAdmin(userOrSession)) return true;
+    return getPermissionBag(userOrSession)?.[permissionKey] === true;
+  }
+  function canAccessPage(page, userOrSession = getSession()) {
+    if (page === 'dashboard') return true;
+    if (page === 'super-admin') return isSuperAdmin(userOrSession);
+    return hasAdminPermission(PAGE_PERMISSION[page], userOrSession);
+  }
   function getStateStorageKey() {
     const userId = getSession()?.user?.id || '';
     return userId ? `${STORAGE_KEY}:${userId}` : STORAGE_KEY;
@@ -447,7 +507,7 @@
     if (sessionBadge) sessionBadge.textContent = session ? `${session.role} session active` : 'No active admin session';
     if (storageBadge) storageBadge.textContent = `${state.exams.length} exams · ${state.questions.length} questions · ${state.students.length} students`;
     if (adminNavLink) {
-      if (session?.role === 'admin') {
+      if (isAdminLike(session)) {
         adminNavLink.textContent = 'Logout';
         adminNavLink.href = '#';
         adminNavLink.onclick = async (event) => {
@@ -460,6 +520,19 @@
         adminNavLink.onclick = null;
       }
     }
+    applyPermissionVisibility();
+  }
+
+  function applyPermissionVisibility(root = document) {
+    const session = getSession();
+    ADMIN_MODULES.forEach((module) => {
+      root.querySelectorAll(`[href="${module.href}"], [data-permission="${module.key}"]`).forEach((node) => {
+        node.hidden = !hasAdminPermission(module.key, session);
+      });
+    });
+    root.querySelectorAll('[data-super-admin-only], [href="super-admin.html"]').forEach((node) => {
+      node.hidden = !isSuperAdmin(session);
+    });
   }
 
   async function logoutAdminSession() {
@@ -730,7 +803,7 @@
     const languageInstruction = payload.version === 'English'
       ? 'All question text, options, and answers MUST be in English only.'
       : 'সব question text, option, answer এবং explanation অবশ্যই শুদ্ধ বাংলায় হবে।';
-    document.getElementById('jsonPromptText').value = `Generate strictly valid JSON for direct import into this Question Bank (copy-পেস্ট ready).\nReturn JSON only. No markdown, no comments, no code fences.\nHard constraints:\n1) Use exactly one root key: {"questions":[ ... ]}\n2) Every question object must include: type, level, group, subject, topic, version\n3) version must be exactly "${payload.version}"\n4) ${languageInstruction}\n5) Do not leave empty strings.\n6) Keep curriculum aligned with:\n   level="${payload.level}", group="${payload.group}", subject="${payload.subject}", topic="${payload.topic}"\n7) Difficulty target: "${payload.difficulty}"\n8) For multiline text use literal \\\\n in JSON (especially CQ answers/explanations).\n9) Math rule (KaTeX-first, strict + auto-fix compatible):
+    document.getElementById('jsonPromptText').value = `Generate strictly valid JSON for direct import into this Question Bank (copy-পেস্ট ready).\nReturn JSON only. No markdown, no comments, no code fences.\nHard constraints:\n1) Use exactly one root key: {"questions":[ ... ]}\n2) Every question object must include: type, level, group, subject, topic, version\n3) version must be exactly "${payload.version}"\n4) ${languageInstruction}\n5) Do not leave empty strings.\n6) Keep curriculum aligned with:\n   level="${payload.level}", group="${payload.group}", subject="${payload.subject}", topic="${payload.topic}"\n7) Difficulty target: "${payload.difficulty}"\n8) For multiline text use literal \\\\n in JSON (especially CQ answers/explanations).\n9) Math rule (MathJax-first, textbook print compatible):
    - Always output inline math with single dollar delimiters: $...$.
    - Use $$...$$ only when a true display block is needed.
    - Do NOT output raw bracket delimiters \(...\) or \[...\] in final JSON.
@@ -738,7 +811,7 @@
    - Escape backslashes correctly inside JSON strings (example: $\frac{a}{b}$ in raw JSON text).
    - Never output malformed delimiters like [\...\]; use only $...$ or $$...$$.
    - Never output plain-text math shortcuts like sqrt(x), a/b, x^2 without LaTeX delimiters.
-10) Keep wording textbook-like (clean, concise, exam-ready), and keep math notation consistent across question/options/answers/explanations.\n11) Physics Standard Output Instructions:\n   - সকল ভেক্টর রাশিকে \\\\vec{} অথবা \\\\hat{} চিহ্ন দিয়ে প্রকাশ করো (যেমন: \\\\hat{\\\\imath}, \\\\hat{\\\\jmath}, \\\\hat{k}).\n   - একক (Units) লেখার সময় \\\\text{} ব্যবহার করো যেন সেগুলো ইটালিক না হয়ে সোজা থাকে (যেমন: $10 \\\\text{ ms}^{-1}$).\n   - গাণিতিক প্রমাণের ধাপগুলো \\\\therefore, \\\\because এবং \\\\implies চিহ্ন দিয়ে আলাদা করো।\n   - জটিল ভগ্নাংশের ক্ষেত্রে \\\\displaystyle ব্যবহার করো যেন লব ও হর স্পষ্ট বোঝা যায়।\n   - Use \\\\frac{}{} for fractions and always use \\\\left( and \\\\right) to ensure brackets scale correctly with the height of the fractions.\n\nIf questionType is MCQ return exactly this shape:\n{\n  "questions": [\n    {\n      "type": "mcq",\n      "level": "${payload.level}",\n      "group": "${payload.group}",\n      "subject": "${payload.subject}",\n      "topic": "${payload.topic}",\n      "version": "${payload.version}",\n      "section": "${payload.topic}",\n      "question": "single clear stem (KaTeX LaTeX allowed)",\n      "options": ["opt A", "opt B", "opt C", "opt D"],\n      "answer": "A",\n      "explanation": "4-6 short lines with \\\\n separators (KaTeX LaTeX allowed)"\n    }\n  ]\n}\n\nIf questionType is CQ return exactly this shape:\n{\n  "questions": [\n    {\n      "type": "cq",\n      "level": "${payload.level}",\n      "group": "${payload.group}",\n      "subject": "${payload.subject}",\n      "topic": "${payload.topic}",\n      "version": "${payload.version}",\n      "section": "${payload.topic}",\n      "stimulus": "clear passage/context (KaTeX LaTeX allowed)",\n      "subQuestions": [\n        { "label": "A", "prompt": "part A prompt", "answer": "accurate answer A\\\\nsecond line if needed" },\n        { "label": "B", "prompt": "part B prompt", "answer": "accurate answer B\\\\nsecond line if needed" },\n        { "label": "C", "prompt": "part C prompt", "answer": "accurate answer C\\\\nsecond line if needed" }\n      ]\n    }\n  ]\n}\n\nValidation before final output:\n- JSON parses without error\n- MCQ has exactly 4 options\n- answer must be one of A/B/C/D\n- CQ must include at least 2 subQuestions with non-empty prompt+answer\n- Every mathematical expression is wrapped with $...$ (or $$...$$ for display blocks)`;
+10) Keep wording textbook-like (clean, concise, exam-ready), and keep math notation consistent across question/options/answers/explanations.\n11) Physics Standard Output Instructions:\n   - সকল ভেক্টর রাশিকে \\\\vec{} অথবা \\\\hat{} চিহ্ন দিয়ে প্রকাশ করো (যেমন: \\\\hat{\\\\imath}, \\\\hat{\\\\jmath}, \\\\hat{k}).\n   - একক (Units) লেখার সময় \\\\text{} ব্যবহার করো যেন সেগুলো ইটালিক না হয়ে সোজা থাকে (যেমন: $10 \\\\text{ ms}^{-1}$).\n   - গাণিতিক প্রমাণের ধাপগুলো \\\\therefore, \\\\because এবং \\\\implies চিহ্ন দিয়ে আলাদা করো।\n   - জটিল ভগ্নাংশের ক্ষেত্রে \\\\displaystyle ব্যবহার করো যেন লব ও হর স্পষ্ট বোঝা যায়।\n   - Use \\\\frac{}{} for fractions and always use \\\\left( and \\\\right) to ensure brackets scale correctly with the height of the fractions.\n\nIf questionType is MCQ return exactly this shape:\n{\n  "questions": [\n    {\n      "type": "mcq",\n      "level": "${payload.level}",\n      "group": "${payload.group}",\n      "subject": "${payload.subject}",\n      "topic": "${payload.topic}",\n      "version": "${payload.version}",\n      "section": "${payload.topic}",\n      "question": "single clear stem (MathJax LaTeX allowed)",\n      "options": ["opt A", "opt B", "opt C", "opt D"],\n      "answer": "A",\n      "explanation": "4-6 short lines with \\\\n separators (MathJax LaTeX allowed)"\n    }\n  ]\n}\n\nIf questionType is CQ return exactly this shape:\n{\n  "questions": [\n    {\n      "type": "cq",\n      "level": "${payload.level}",\n      "group": "${payload.group}",\n      "subject": "${payload.subject}",\n      "topic": "${payload.topic}",\n      "version": "${payload.version}",\n      "section": "${payload.topic}",\n      "stimulus": "clear passage/context (MathJax LaTeX allowed)",\n      "subQuestions": [\n        { "label": "A", "prompt": "part A prompt", "answer": "accurate answer A\\\\nsecond line if needed" },\n        { "label": "B", "prompt": "part B prompt", "answer": "accurate answer B\\\\nsecond line if needed" },\n        { "label": "C", "prompt": "part C prompt", "answer": "accurate answer C\\\\nsecond line if needed" }\n      ]\n    }\n  ]\n}\n\nValidation before final output:\n- JSON parses without error\n- MCQ has exactly 4 options\n- answer must be one of A/B/C/D\n- CQ must include at least 2 subQuestions with non-empty prompt+answer\n- Every mathematical expression is wrapped with $...$ (or $$...$$ for display blocks)`;
     showToast('Curriculum prompt generated.');
   }
 
@@ -3176,7 +3249,7 @@
       }
     }
 
-    return `<!DOCTYPE html><html><head><meta charset="utf-8" /><title>${escapeHtml(exam.title)}</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" /><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script><script>function renderKaTeXForPrint(){if(!window.renderMathInElement)return;window.renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:'ignore'});}window.addEventListener('load',()=>setTimeout(renderKaTeXForPrint,60));</script><style>@page{margin:10mm}body{font-family:'Kalpurush','Noto Sans Bengali',Arial,sans-serif;background:#fff;padding:12px;color:#111}.paper{max-width:980px;margin:0 auto 14px auto;padding:12px 14px;border:1px solid #d6dbe3;border-radius:10px;break-inside:avoid-page;position:relative}.set-paper{page-break-before:always}.set-paper:first-of-type{page-break-before:auto}h1,h2,h3{margin:0}.board-head{text-align:center;border:1px solid #d6dbe3;border-radius:10px;padding:6px 8px 8px;margin-bottom:8px;position:relative}.header-logo{position:absolute;top:8px;width:56px;height:56px;object-fit:contain}.header-logo--left{left:8px}.header-logo--right{right:8px}.board-head--modern{background:linear-gradient(140deg,rgba(148,163,184,.12),transparent 65%)}.board-head--minimal{border-width:0 0 2px 0;border-radius:0;padding:4px 0 6px}.board-head--classic{background:#f8fbff}.board-head-grid{display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:10px;align-items:start}.board-col{font-size:12px;text-align:left}.board-col p{margin:2px 0}.board-col--center{text-align:center}.board-col--center h1{font-size:18px;margin-bottom:4px}.board-col__meta{display:flex;flex-direction:column;gap:2px}.board-col__spacer{height:56px}.board-code-box{border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:4px 8px;display:flex;flex-direction:column;gap:2px}.solution-qr{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:#334155}.solution-qr--header{width:72px}.solution-qr img{width:56px;height:56px;border:1px solid #cbd5e1;padding:2px;background:#fff;border-radius:6px}.solution-qr__blank{width:56px;height:56px;border:1px dashed #cbd5e1;border-radius:6px;background:#fff}.instructions{border:1px solid #d6d6d6;background:#f8fafc;padding:5px 7px;border-radius:8px;text-align:center;margin:6px 0 0 0;font-size:11px}.question-grid{column-count:${Math.max(1, Number(config.columns || 1))};column-gap:14px}.part-heading{break-inside:avoid;page-break-inside:avoid;font-weight:800;font-size:14px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;padding:4px 8px;margin:0 0 6px}.print-question{break-inside:avoid;page-break-inside:avoid;padding:0 0 6px;margin:0 0 8px;display:block}.print-question h3{margin-right:2px}.print-question-image{display:block;max-width:100%;max-height:170px;object-fit:contain;border:1px solid #d8dee9;border-radius:8px;background:#fff;margin:6px 0}.print-option-image{display:block;max-width:100%;max-height:62px;object-fit:contain;border:1px solid #d8dee9;border-radius:6px;background:#fff;margin-top:4px}.option-list{list-style:none;padding-left:12px;margin:4px 0}.option-list li{display:flex;gap:6px;margin:2px 0;font-size:13px}.option-list--grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 14px}.option-list--grid li{margin:0}.option-label{min-width:16px;font-weight:700}.answer-block,.explanation-block{margin-top:4px;font-size:12px}.math-tex{display:inline}.omr-sheet-head{border:1px solid #e2e8f0;border-radius:10px;background:#fdf2f8;padding:8px 10px;margin-bottom:10px}.omr-grid{display:grid;gap:8px 10px;margin-top:10px}.omr-grid--4col{grid-template-columns:repeat(4,minmax(0,1fr))}.omr-column{border:1px solid #f9a8d4;border-radius:8px;padding:6px;background:#fff}.omr-column-head{text-align:center;font-size:11px;font-weight:700;border-bottom:1px solid #fbcfe8;padding-bottom:4px;margin-bottom:4px;color:#9d174d}.omr-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:1px 0}.omr-qno{min-width:24px;font-weight:700;font-size:11px}.omr-bubbles{display:flex;gap:4px}.omr-bubble{width:16px;height:16px;border:1.2px solid #db2777;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#be185d;background:#fff}.omr-bubble.is-correct{background:#9d174d;border-color:#7a1237;color:#fff;box-shadow:inset 0 0 0 2px #be185d,inset 0 0 0 5px rgba(255,255,255,.28)}.math-frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1;font-size:.92em;margin:0 .08em}.math-frac__num{border-bottom:1px solid currentColor;padding:0 .18em .05em}.math-frac__den{padding:.05em .18em 0}.physics-book{font-family:'Times New Roman','STIX Two Text','Noto Serif Bengali','Kalpurush',serif}.physics-book .print-question,.physics-book .print-question h3,.physics-book .print-question p,.physics-book .print-question div,.physics-book .option-list li span,.physics-book .instructions{text-align:justify}.physics-book .katex-display{margin:.55em auto;text-align:center}.physics-book .instructions,.physics-book .explanation-block,.physics-book .answer-block{background:#f8fafc;border:1px solid #dbe6f3;border-radius:8px;padding:4px 6px}.physics-book .formula-card,.physics-book .note-card{background:#f8fafc;border:1px solid #dbe6f3;border-radius:8px;padding:6px 8px;margin:6px 0}.compact-mode .paper{padding:10px 12px}.compact-mode .board-head-grid{gap:8px}.compact-mode .board-col{font-size:11px}.compact-mode .board-col--center h1{font-size:16px}.compact-mode .header-logo{width:42px;height:42px;top:6px}.compact-mode .board-col__spacer{height:42px}.compact-mode .board-code-box{padding:3px 6px}.compact-mode .solution-qr img,.compact-mode .solution-qr__blank{width:44px;height:44px}.compact-mode .question-grid{column-gap:10px}.compact-mode .part-heading{font-size:12px;padding:3px 7px}.compact-mode .print-question{margin:0 0 4px;padding:0 0 4px}.compact-mode h3{font-size:13px;margin-bottom:3px}.compact-mode .print-question-image{max-height:120px;margin:4px 0}.compact-mode .print-option-image{max-height:46px}.compact-mode .option-list{padding-left:10px}.compact-mode .option-list li{margin:1px 0;font-size:12px}.compact-mode .option-list--grid{gap:1px 10px}.compact-mode .option-list--grid li{margin:0}.compact-mode .instructions{font-size:10px;padding:4px 6px}.compact-mode .omr-bubble{width:14px;height:14px;font-size:8px}@media print{body{padding:0}.set-paper,.answer-sheet{page-break-after:always}.set-paper:last-of-type,.answer-sheet:last-of-type{page-break-after:auto}}</style></head><body class="${bodyClass}">${setMarkup.join('')}${answerSheets.join('')}</body></html>`;
+    return `<!DOCTYPE html><html><head><meta charset="utf-8" /><title>${escapeHtml(exam.title)}</title>${mathJaxHeadMarkup()}<style>@page{margin:10mm}body{font-family:'Kalpurush','Noto Sans Bengali',Arial,sans-serif;background:#fff;padding:12px;color:#111}.paper{max-width:980px;margin:0 auto 14px auto;padding:12px 14px;border:1px solid #d6dbe3;border-radius:10px;break-inside:avoid-page;position:relative}.set-paper{page-break-before:always}.set-paper:first-of-type{page-break-before:auto}h1,h2,h3{margin:0}.board-head{text-align:center;border:1px solid #d6dbe3;border-radius:10px;padding:6px 8px 8px;margin-bottom:8px;position:relative}.header-logo{position:absolute;top:8px;width:56px;height:56px;object-fit:contain}.header-logo--left{left:8px}.header-logo--right{right:8px}.board-head--modern{background:linear-gradient(140deg,rgba(148,163,184,.12),transparent 65%)}.board-head--minimal{border-width:0 0 2px 0;border-radius:0;padding:4px 0 6px}.board-head--classic{background:#f8fbff}.board-head-grid{display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:10px;align-items:start}.board-col{font-size:12px;text-align:left}.board-col p{margin:2px 0}.board-col--center{text-align:center}.board-col--center h1{font-size:18px;margin-bottom:4px}.board-col__meta{display:flex;flex-direction:column;gap:2px}.board-col__spacer{height:56px}.board-code-box{border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:4px 8px;display:flex;flex-direction:column;gap:2px}.solution-qr{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:#334155}.solution-qr--header{width:72px}.solution-qr img{width:56px;height:56px;border:1px solid #cbd5e1;padding:2px;background:#fff;border-radius:6px}.solution-qr__blank{width:56px;height:56px;border:1px dashed #cbd5e1;border-radius:6px;background:#fff}.instructions{border:1px solid #d6d6d6;background:#f8fafc;padding:5px 7px;border-radius:8px;text-align:center;margin:6px 0 0 0;font-size:11px}.question-grid{column-count:${Math.max(1, Number(config.columns || 1))};column-gap:14px}.part-heading{break-inside:avoid;page-break-inside:avoid;font-weight:800;font-size:14px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;padding:4px 8px;margin:0 0 6px}.print-question{break-inside:avoid;page-break-inside:avoid;padding:0 0 6px;margin:0 0 8px;display:block}.print-question h3{margin-right:2px}.print-question-image{display:block;max-width:100%;max-height:170px;object-fit:contain;border:1px solid #d8dee9;border-radius:8px;background:#fff;margin:6px 0}.print-option-image{display:block;max-width:100%;max-height:62px;object-fit:contain;border:1px solid #d8dee9;border-radius:6px;background:#fff;margin-top:4px}.option-list{list-style:none;padding-left:12px;margin:4px 0}.option-list li{display:flex;gap:6px;margin:2px 0;font-size:13px}.option-list--grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 14px}.option-list--grid li{margin:0}.option-label{min-width:16px;font-weight:700}.answer-block,.explanation-block{margin-top:4px;font-size:12px}.math-tex{display:inline}.omr-sheet-head{border:1px solid #e2e8f0;border-radius:10px;background:#fdf2f8;padding:8px 10px;margin-bottom:10px}.omr-grid{display:grid;gap:8px 10px;margin-top:10px}.omr-grid--4col{grid-template-columns:repeat(4,minmax(0,1fr))}.omr-column{border:1px solid #f9a8d4;border-radius:8px;padding:6px;background:#fff}.omr-column-head{text-align:center;font-size:11px;font-weight:700;border-bottom:1px solid #fbcfe8;padding-bottom:4px;margin-bottom:4px;color:#9d174d}.omr-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:1px 0}.omr-qno{min-width:24px;font-weight:700;font-size:11px}.omr-bubbles{display:flex;gap:4px}.omr-bubble{width:16px;height:16px;border:1.2px solid #db2777;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#be185d;background:#fff}.omr-bubble.is-correct{background:#9d174d;border-color:#7a1237;color:#fff;box-shadow:inset 0 0 0 2px #be185d,inset 0 0 0 5px rgba(255,255,255,.28)}.math-frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1;font-size:.92em;margin:0 .08em}.math-frac__num{border-bottom:1px solid currentColor;padding:0 .18em .05em}.math-frac__den{padding:.05em .18em 0}.physics-book{font-family:'Times New Roman','STIX Two Text','Noto Serif Bengali','Kalpurush',serif}.physics-book .print-question,.physics-book .print-question h3,.physics-book .print-question p,.physics-book .print-question div,.physics-book .option-list li span,.physics-book .instructions{text-align:justify}.physics-book .mjx-container[display="true"]{margin:.55em auto;text-align:center}.physics-book .instructions,.physics-book .explanation-block,.physics-book .answer-block{background:#f8fafc;border:1px solid #dbe6f3;border-radius:8px;padding:4px 6px}.physics-book .formula-card,.physics-book .note-card{background:#f8fafc;border:1px solid #dbe6f3;border-radius:8px;padding:6px 8px;margin:6px 0}.compact-mode .paper{padding:10px 12px}.compact-mode .board-head-grid{gap:8px}.compact-mode .board-col{font-size:11px}.compact-mode .board-col--center h1{font-size:16px}.compact-mode .header-logo{width:42px;height:42px;top:6px}.compact-mode .board-col__spacer{height:42px}.compact-mode .board-code-box{padding:3px 6px}.compact-mode .solution-qr img,.compact-mode .solution-qr__blank{width:44px;height:44px}.compact-mode .question-grid{column-gap:10px}.compact-mode .part-heading{font-size:12px;padding:3px 7px}.compact-mode .print-question{margin:0 0 4px;padding:0 0 4px}.compact-mode h3{font-size:13px;margin-bottom:3px}.compact-mode .print-question-image{max-height:120px;margin:4px 0}.compact-mode .print-option-image{max-height:46px}.compact-mode .option-list{padding-left:10px}.compact-mode .option-list li{margin:1px 0;font-size:12px}.compact-mode .option-list--grid{gap:1px 10px}.compact-mode .option-list--grid li{margin:0}.compact-mode .instructions{font-size:10px;padding:4px 6px}.compact-mode .omr-bubble{width:14px;height:14px;font-size:8px}@media print{body{padding:0}.set-paper,.answer-sheet{page-break-after:always}.set-paper:last-of-type,.answer-sheet:last-of-type{page-break-after:auto}}</style></head><body class="${bodyClass}">${setMarkup.join('')}${answerSheets.join('')}</body></html>`;
   }
 
   function getSolutionPublicUrl(examId) {
@@ -3444,14 +3517,6 @@
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(String(htmlContent), 'text/html');
-      if (typeof window.renderMathInElement === 'function' && doc.body) {
-        window.renderMathInElement(doc.body, {
-          delimiters: katexDelimiters,
-          throwOnError: false,
-          strict: 'ignore',
-        });
-      }
-      doc.querySelectorAll('script').forEach((node) => node.remove());
       return `<!DOCTYPE html>${doc.documentElement.outerHTML}`;
     } catch {
       return htmlContent;
@@ -3495,19 +3560,6 @@
       if (doc.readyState !== 'complete') {
         if (Date.now() - startedAt > timeoutMs) return finalizePrint();
         return setTimeout(tryRender, 60);
-      }
-
-      if (typeof win.renderMathInElement === 'function') {
-        try {
-          win.renderMathInElement(doc.body, {
-            delimiters: katexDelimiters,
-            throwOnError: false,
-            strict: 'ignore',
-          });
-        } catch (_) {
-          // fallback to printing even if render fails
-        }
-        return setTimeout(finalizePrint, renderDelayMs);
       }
 
       if (win.MathJax?.typesetPromise) {
@@ -4208,30 +4260,115 @@
     });
   }
 
+  async function initSuperAdminPage() {
+    document.getElementById('refreshAdminAccessBtn')?.addEventListener('click', loadSuperAdminProfiles);
+    await loadSuperAdminProfiles();
+  }
+
+  async function loadSuperAdminProfiles() {
+    const target = document.getElementById('superAdminList');
+    if (!target) return;
+    target.innerHTML = '<p class="muted-copy">Loading admin profiles...</p>';
+    try {
+      const payload = await cloudflareRequest('/admin/profiles');
+      renderSuperAdminProfiles(payload.admins || []);
+    } catch (error) {
+      target.innerHTML = `<p class="inline-message inline-message--error">${escapeHtml(error?.message || 'Failed to load admin profiles.')}</p>`;
+    }
+  }
+
+  function renderSuperAdminProfiles(admins) {
+    const target = document.getElementById('superAdminList');
+    if (!target) return;
+    if (!admins.length) {
+      target.innerHTML = emptyState('No admin profiles found.');
+      return;
+    }
+    target.innerHTML = admins.map((admin) => {
+      const permissions = admin.permissions || {};
+      const isSelfSuper = admin.role === 'super_admin';
+      const moduleControls = ADMIN_MODULES.map((module) => `
+        <label class="checkbox-row checkbox-card">
+          <input type="checkbox" data-admin-permission="${module.key}" ${permissions[module.key] ? 'checked' : ''} ${isSelfSuper ? 'disabled' : ''} />
+          <span>${escapeHtml(module.label)}</span>
+        </label>
+      `).join('');
+      return `
+        <article class="entity-card" data-admin-access-card="${escapeHtml(admin.id)}">
+          <div class="entity-card__main">
+            <h3>${escapeHtml(admin.full_name || admin.email || 'Admin')}</h3>
+            <p>${escapeHtml(admin.email || '')}</p>
+            <p class="muted-copy">${admin.role === 'super_admin' ? 'Super admin' : 'Admin'} · ${admin.active ? 'Active' : 'Disabled'}</p>
+          </div>
+          <div class="app-form app-form--single">
+            <label class="checkbox-row checkbox-card">
+              <input type="checkbox" data-admin-active ${admin.active ? 'checked' : ''} ${isSelfSuper ? 'disabled' : ''} />
+              <span>Account active</span>
+            </label>
+            <div class="permission-grid">${moduleControls}</div>
+            <div class="entity-actions">
+              <button type="button" class="toolbar-button" data-save-admin-access ${isSelfSuper ? 'disabled' : ''}>Save Access</button>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    target.querySelectorAll('[data-save-admin-access]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const card = button.closest('[data-admin-access-card]');
+        const adminId = card?.dataset.adminAccessCard;
+        const permissions = {};
+        card?.querySelectorAll('[data-admin-permission]').forEach((input) => {
+          permissions[input.dataset.adminPermission] = input.checked;
+        });
+        const active = card?.querySelector('[data-admin-active]')?.checked !== false;
+        button.disabled = true;
+        try {
+          await cloudflareRequest('/admin/permissions', {
+            method: 'PUT',
+            body: { admin_id: adminId, permissions, active },
+          });
+          showToast('Admin access updated.');
+          await loadSuperAdminProfiles();
+        } catch (error) {
+          showToast(error?.message || 'Failed to update admin access.', 'error');
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+  }
+
   function parseCommaList(value) { return value.split(',').map((item) => item.trim()).filter(Boolean); }
   function parseCSVRows(text) { const lines = text.trim().split(/\r?\n/).filter(Boolean); if (!lines.length) return []; const header = lines[0].split(',').map((item) => item.trim()); return lines.slice(1).map((line) => { const values = line.split(',').map((item) => item.trim()); return Object.fromEntries(header.map((key, index) => [key, values[index] || ''])); }); }
   function upsert(collection, item) { const index = collection.findIndex((entry) => entry.id === item.id); if (index === -1) collection.unshift(item); else collection[index] = { ...collection[index], ...item }; }
   function readFileAsDataUrl(file) { if (!file) return Promise.resolve(''); return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); }
-  const katexDelimiters = [
-    { left: '$$', right: '$$', display: true },
-    { left: '$', right: '$', display: false },
-  ];
+  function mathJaxHeadMarkup() {
+    return `<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\\\(','\\\\)']],displayMath:[['$$','$$'],['\\\\[','\\\\]']],processEscapes:true},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>`;
+  }
 
-  function renderKatexInElement(target) {
-    if (!target || !window.renderMathInElement) return;
-    window.renderMathInElement(target, {
-      delimiters: katexDelimiters,
-      throwOnError: false,
-      strict: 'ignore',
-    });
+  function renderMathInElement(target = document.body) {
+    if (!target) return;
+    if (window.MathJax?.typesetPromise) {
+      window.MathJax.typesetClear?.([target]);
+      window.MathJax.typesetPromise([target]).catch(() => null);
+      return;
+    }
+    if (window.renderMathInElement) {
+      window.renderMathInElement(target, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false },
+        ],
+        throwOnError: false,
+        strict: 'ignore',
+      });
+    }
   }
 
   function queueTypeset() {
-    if (window.renderMathInElement) {
-      renderKatexInElement(document.body);
-      return;
-    }
-    if (window.MathJax?.typesetPromise) window.MathJax.typesetPromise();
+    renderMathInElement(document.body);
   }
   function formatExplanationForDisplay(text, options = {}) {
     const normalized = String(text || '')

@@ -24,6 +24,7 @@ const files = [
   'student-profile.html',
   'student-signup.html',
   'students.html',
+  'super-admin.html',
   'styles.css',
 ];
 

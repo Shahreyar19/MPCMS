@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Super Admin | MegaPrep CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="super-admin">
+<div class="page-shell">
+<header class="topbar topbar--dashboard">
+<div class="topbar-glow" aria-hidden="true"></div>
+<div class="brand brand--dashboard">
+<div class="logo-mark logo-mark--3d" aria-hidden="true"><span>M</span></div>
+<div class="brand-copy brand-copy--stacked">
+<span class="brand-name">MegaPrep</span>
+<span class="brand-tag">Super Admin</span>
+</div>
+</div>
+<div class="topbar-actions topbar-actions--dashboard">
+<button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button>
+<a class="topbar-button topbar-button--ghost" href="index.html">Dashboard</a>
+</div>
+</header>
+<main class="content-area app-layout">
+<section class="workspace-shell">
+<div class="workspace-toolbar">
+<div>
+<p class="section-heading__eyebrow">Access Control</p>
+<h2>Admin Profiles</h2>
+</div>
+<button id="refreshAdminAccessBtn" class="toolbar-button" type="button">Refresh</button>
+</div>
+<div id="superAdminList" class="entity-list"></div>
+</section>
+</main>
+</div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+<script src="curriculum.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

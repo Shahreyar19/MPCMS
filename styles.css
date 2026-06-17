@@ -1460,12 +1460,18 @@ body.theme-dark .summary-card {
 }
 
 
-.katex {
+.mjx-container {
   font-size: 1.05em;
 }
 
-.katex-display {
+.mjx-container[display="true"] {
   margin: 0.5em 0;
+}
+
+.permission-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
 }
 
 .app-form {
