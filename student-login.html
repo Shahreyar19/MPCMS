@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Login | MegaPrep CMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="auth-page auth-page--student">
+      <section class="auth-panel auth-panel--intro">
+        <a class="back-link" href="index.html">← Back to dashboard</a>
+        <div class="brand brand--light">
+          <div class="logo-mark" aria-hidden="true"><span>M</span></div>
+          <div class="brand-copy">
+            <span class="brand-name">MegaPrep</span>
+            <span class="brand-tag brand-tag--light">Student Portal</span>
+          </div>
+        </div>
+
+        <div class="auth-hero-copy">
+          <p class="eyebrow eyebrow--light">Student access</p>
+          <h1>Sign in to your student portal.</h1>
+          <p class="auth-intro-copy auth-intro-copy--light">
+            Simple access for exams, schedules, and results.
+          </p>
+        </div>
+      </section>
+
+      <section class="auth-panel auth-panel--form">
+        <div class="auth-card auth-card--student">
+          <div class="auth-card-top auth-card-top--compact">
+            <div>
+              <p class="form-kicker form-kicker--student">Student login</p>
+              <h2>Sign in</h2>
+            </div>
+          </div>
+
+          <form id="studentLoginForm" class="auth-form">
+            <label>
+              Email or student ID
+              <input type="text" placeholder="Enter email or student ID" />
+            </label>
+            <label>
+              Password
+              <input type="password" placeholder="Enter password" />
+            </label>
+
+            <div class="form-row">
+              <label class="checkbox-row">
+                <input type="checkbox" checked />
+                <span>Remember this device</span>
+              </label>
+              <a href="#">Need help?</a>
+            </div>
+
+            <button type="submit" class="submit-button submit-button--student">Login Now</button>
+          </form>
+
+          <p class="switch-copy switch-copy--simple">
+            New student here?
+            <a href="student-signup.html">Create your account</a>
+          </p>
+        </div>
+      </section>
+    </main>
+      <script src="firebase-config.js"></script>
+      <script src="auth.js"></script>
+  </body>
+</html>

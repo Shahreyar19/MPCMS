@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MegaPrep CMS Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="dashboard">
+    <div class="page-shell page-shell--dashboard">
+      <header class="topbar topbar--dashboard">
+        <div class="topbar-glow" aria-hidden="true"></div>
+        <div class="brand brand--dashboard">
+          <div class="logo-mark logo-mark--3d" aria-hidden="true"><span>M</span></div>
+          <div class="brand-copy brand-copy--stacked">
+            <span class="brand-name">MegaPrep</span>
+            <span class="brand-tag">CMS Dashboard</span>
+          </div>
+        </div>
+        <div class="topbar-actions topbar-actions--dashboard">
+          <button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button>
+          <a class="topbar-button topbar-button--ghost" id="navAdminLogin" href="admin-login.html">Admin Login</a>
+          <a class="topbar-button topbar-button--solid" href="student-login.html">Student Login</a>
+        </div>
+      </header>
+
+      <main class="content-area app-layout">
+        <section class="hero-copy hero-copy--wide hero-copy--dashboard">
+          <div class="hero-copy__content hero-copy__content--dashboard">
+            <p class="eyebrow">MegaPrep Workspace</p>
+            <h1>Professional Exam & Question Maker CMS.</h1>
+            <p class="hero-description">Go to a dedicated module page to create exams, build questions, manage curriculum, print papers, and handle analytics.</p>
+            <div class="hero-inline-meta">
+              <span class="hero-inline-chip" id="sessionBadge">No active admin session</span>
+              <span class="hero-inline-chip" id="storageBadge">Local workspace ready</span>
+            </div>
+          </div>
+          <div class="hero-visual" aria-hidden="true">
+            <div class="hero-orbit hero-orbit--one"></div>
+            <div class="hero-orbit hero-orbit--two"></div>
+            <div class="hero-visual__layer hero-visual__layer--back"></div>
+            <div class="hero-visual__layer hero-visual__layer--mid"></div>
+            <div class="hero-visual__panel hero-visual__panel--minimal">
+              <div class="hero-visual__panel-top"><span>MegaPrep</span><strong>Exam Engine</strong></div>
+              <div class="hero-visual__panel-lines"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="modules-shell" aria-label="MegaPrep CMS modules">
+          <div class="section-heading"><div><p class="section-heading__eyebrow">Main modules</p><h2>Open a page</h2></div></div>
+          <div class="card-grid card-grid--interactive">
+            <a class="dashboard-card card-blue module-link" href="create-exam.html"><div class="card-sheen" aria-hidden="true"></div><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></div><div class="card-body"><h2>Create Exam</h2><p>Exam setup page</p></div><div class="card-arrow" aria-hidden="true">→</div></a>
+            <a class="dashboard-card card-green module-link" href="handle-exams.html"><div class="card-sheen" aria-hidden="true"></div><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></div><div class="card-body"><h2>Handle Exams</h2><p>Edit, export, print</p></div><div class="card-arrow" aria-hidden="true">→</div></a>
+            <a class="dashboard-card card-orange module-link" href="question-bank.html"><div class="card-sheen" aria-hidden="true"></div><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7.5A2.5 2.5 0 0 1 8.5 5H18v14H8.5A2.5 2.5 0 0 0 6 21z" /><path d="M6 7.5V21" /></svg></div><div class="card-body"><h2>Question Bank</h2><p>MCQ, CQ, JSON prompt</p></div><div class="card-arrow" aria-hidden="true">→</div></a>
+            <a class="dashboard-card card-purple module-link" href="students.html"><div class="card-sheen" aria-hidden="true"></div><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1" /><path d="M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 19v-1a4 4 0 0 0-3-3.87" /><path d="M14 4a4 4 0 0 1 0 7.75" /></svg></div><div class="card-body"><h2>Students</h2><p>Students management</p></div><div class="card-arrow" aria-hidden="true">→</div></a>
+            <a class="dashboard-card card-teal module-link" href="scan-omr.html"><div class="card-sheen" aria-hidden="true"></div><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 6l1 14h8l1-14" /><path d="M9 11h6M9 15h6" /></svg></div><div class="card-body"><h2>Scan OMR</h2><p>Download + Process OMR</p></div><div class="card-arrow" aria-hidden="true">→</div></a>
+            <a class="dashboard-card card-red module-link" href="analytics.html"><div class="card-sheen" aria-hidden="true"></div><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9" /><path d="M12 19V5" /><path d="M19 19v-7" /></svg></div><div class="card-body"><h2>Analytics</h2><p>Attempts and charts</p></div><div class="card-arrow" aria-hidden="true">→</div></a>
+            <a class="dashboard-card card-teal module-link" href="devices.html"><div class="card-sheen" aria-hidden="true"></div><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="10" width="12" height="10" rx="2" /><path d="M9 10V8a3 3 0 0 1 6 0v2" /></svg></div><div class="card-body"><h2>Devices</h2><p>Session security</p></div><div class="card-arrow" aria-hidden="true">→</div></a>
+            <a class="dashboard-card card-slate module-link" href="passwords.html"><div class="card-sheen" aria-hidden="true"></div><div class="card-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3" /><rect x="5" y="10" width="14" height="10" rx="2" /></svg></div><div class="card-body"><h2>Password</h2><p>Password management</p></div><div class="card-arrow" aria-hidden="true">→</div></a>
+          </div>
+        </section>
+      </main>
+    </div>
+    <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+    <script src="curriculum.js"></script>
+    <script src="firebase-config.js"></script>
+<script src="app.js"></script>
+  </body>
+</html>

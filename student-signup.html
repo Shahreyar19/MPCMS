@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Sign Up | MegaPrep CMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="auth-page auth-page--student auth-page--signup">
+      <section class="auth-panel auth-panel--intro">
+        <a class="back-link" href="index.html">← Back to dashboard</a>
+        <div class="brand brand--light">
+          <div class="logo-mark" aria-hidden="true"><span>M</span></div>
+          <div class="brand-copy">
+            <span class="brand-name">MegaPrep</span>
+            <span class="brand-tag brand-tag--light">Student Portal</span>
+          </div>
+        </div>
+
+        <div class="auth-hero-copy">
+          <p class="eyebrow eyebrow--light">Student setup</p>
+          <h1>Create your student account.</h1>
+          <p class="auth-intro-copy auth-intro-copy--light">
+            Register once to access the learning portal.
+          </p>
+        </div>
+      </section>
+
+      <section class="auth-panel auth-panel--form">
+        <div class="auth-card auth-card--student">
+          <div class="auth-card-top auth-card-top--compact">
+            <div>
+              <p class="form-kicker form-kicker--student">Student sign up</p>
+              <h2>Create account</h2>
+            </div>
+          </div>
+
+          <form id="studentSignupForm" class="auth-form auth-form--two-col">
+            <label>
+              Full name
+              <input type="text" placeholder="Enter full name" />
+            </label>
+            <label>
+              Student ID
+              <input type="text" placeholder="Enter student ID" />
+            </label>
+            <label>
+              Email address
+              <input type="email" placeholder="Enter email address" />
+            </label>
+            <label>
+              Mobile number
+              <input type="tel" placeholder="Enter mobile number" />
+            </label>
+            <label>
+              Class / Program
+              <input type="text" placeholder="Enter class or program" />
+            </label>
+            <label>
+              Password
+              <input type="password" placeholder="Create password" />
+            </label>
+            <label class="full-span checkbox-row checkbox-card">
+              <input type="checkbox" checked />
+              <span>I agree to the student portal terms and privacy policy.</span>
+            </label>
+            <button type="submit" class="submit-button submit-button--student full-span">
+              Create Student Account
+            </button>
+          </form>
+
+          <p class="switch-copy switch-copy--simple">
+            Already registered?
+            <a href="student-login.html">Login here</a>
+          </p>
+        </div>
+      </section>
+    </main>
+      <script src="firebase-config.js"></script>
+      <script src="auth.js"></script>
+  </body>
+</html>

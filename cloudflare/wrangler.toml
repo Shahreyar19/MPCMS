@@ -1,0 +1,9 @@
+name = "mpqm-worker"
+main = "worker.js"
+compatibility_date = "2026-04-01"
+account_id = "27e876b1534341f8b0088d0ba21d6a34"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mpqm1"
+database_id = "0a627255-21ae-42dc-b2a1-75b1ff7c061a"

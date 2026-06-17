@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Handle Exams | MegaPrep CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="handle-exams">
+<div class="page-shell">
+<header class="topbar topbar--dashboard">
+<div class="topbar-glow" aria-hidden="true">
+</div>
+<div class="brand brand--dashboard">
+<div class="logo-mark logo-mark--3d" aria-hidden="true">
+<span>M</span>
+</div>
+<div class="brand-copy brand-copy--stacked">
+<span class="brand-name">MegaPrep</span>
+<span class="brand-tag">Handle Exams</span>
+</div>
+</div>
+<div class="topbar-actions topbar-actions--dashboard">
+<button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button>
+<a class="topbar-button topbar-button--ghost" href="index.html">Dashboard</a>
+<a class="topbar-button topbar-button--solid" href="create-exam.html">Create Exam</a>
+</div>
+</header>
+<main class="content-area app-layout">
+<section class="workspace-shell">
+<div class="workspace-toolbar">
+<div>
+<p class="section-heading__eyebrow">Handle Exams</p>
+<h2>Exam Operations</h2>
+</div>
+<div class="workspace-actions">
+<button type="button" class="toolbar-button" id="exportDataBtn">Export Data</button>
+<label class="toolbar-button toolbar-button--file">Import Data<input id="importDataFile" type="file" accept="application/json" hidden />
+</label>
+</div>
+</div>
+<div class="panel-grid panel-grid--form">
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Exam Manager</h3>
+<p>Edit, publish, download, print, and customize paper output.</p>
+</div>
+<form id="questionFilterForm" class="app-form app-form--two-col">
+<label>Level<select id="examFilterLevel">
+</select>
+</label>
+<label>Group<select id="examFilterGroup">
+</select>
+</label>
+<label>Subject<select id="examFilterSubject">
+</select>
+</label>
+<label>Topic<select id="examFilterTopic">
+</select>
+</label>
+</form>
+<div id="examManagerList" class="entity-list">
+</div>
+</div>
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Print Format</h3>
+<p>Customize printed/downloaded question paper format.</p>
+</div>
+<form id="printConfigForm" class="app-form app-form--single">
+<label>Header Title<input id="printHeaderTitle" type="text" placeholder="Institution / Exam Title" />
+</label>
+<div class="field-row">
+<label>Exam Code<input id="printExamCode" type="text" placeholder="Exam code" />
+</label>
+<label>Class / Session<input id="printClassLabel" type="text" placeholder="Class / Session" />
+</label>
+</div>
+<label>Instructions<textarea id="printInstructions" rows="4" placeholder="Exam instructions">
+</textarea>
+</label>
+<div class="field-row">
+<label>Duration (Top Row)<input id="printDurationLabel" type="text" placeholder="e.g. 3 Hours" />
+</label>
+<label>Full Marks (Top Row)<input id="printMarksLabel" type="text" placeholder="e.g. 100" />
+</label>
+</div>
+<div class="field-row">
+<label>Question Paper Title<input id="printPaperTitle" type="text" placeholder="Leave empty to use exam title" />
+</label>
+<label>Paper Subject<input id="printPaperSubject" type="text" placeholder="Leave empty to use exam subject" />
+</label>
+</div>
+<div class="field-row">
+<label>Paper Date<input id="printPaperDate" type="text" placeholder="Leave empty to use exam date" />
+</label>
+<label>Paper Type<input id="printPaperType" type="text" placeholder="Leave empty to use exam type" />
+</label>
+</div>
+<div class="field-row">
+<label>Header Theme<select id="printHeaderTheme">
+<option value="classic">Classic</option>
+<option value="modern">Modern</option>
+<option value="minimal">Minimal</option>
+</select>
+</label>
+</div>
+<div class="field-row">
+<label>Left Logo<input id="printLeftLogoFile" type="file" accept="image/*" />
+</label>
+<label>Right Logo<input id="printRightLogoFile" type="file" accept="image/*" />
+</label>
+</div>
+<div class="field-row">
+<button type="button" class="toolbar-button" id="clearLeftLogoBtn">Clear Left Logo</button>
+<button type="button" class="toolbar-button" id="clearRightLogoBtn">Clear Right Logo</button>
+</div>
+<div class="field-row">
+<label>Question Number Prefix<input id="printNumberPrefix" type="text" placeholder="(optional)" />
+</label>
+<label>Columns<select id="printColumns">
+<option value="1">1 Column</option>
+<option value="2">2 Columns</option>
+</select>
+</label>
+</div>
+<div class="field-row">
+<label>Set Count<input id="printSetCount" type="number" min="1" max="10" />
+</label>
+<label>Set Label Style<select id="printSetLabelStyle">
+<option value="alphabet">Set A, B, C...</option>
+<option value="numeric">Set 1, 2, 3...</option>
+</select>
+</label>
+</div>
+<label class="checkbox-row checkbox-card">
+<input id="printShowAnswers" type="checkbox" />
+<span>Include answers in output</span>
+</label>
+<label class="checkbox-row checkbox-card">
+<input id="printShowExplanation" type="checkbox" />
+<span>Include explanations in output</span>
+</label>
+<label class="checkbox-row checkbox-card">
+<input id="printShuffleQuestions" type="checkbox" />
+<span>Auto shuffle questions per set</span>
+</label>
+<label class="checkbox-row checkbox-card">
+<input id="printShuffleOptions" type="checkbox" />
+<span>Auto shuffle MCQ options per set</span>
+</label>
+<label class="checkbox-row checkbox-card">
+<input id="printAnswerSheet" type="checkbox" />
+<span>Attach answer sheet for all sets</span>
+</label>
+<label class="checkbox-row checkbox-card">
+<input id="printCompactMode" type="checkbox" />
+<span>Compact print mode (fit more MCQ per page)</span>
+</label>
+<label class="checkbox-row checkbox-card">
+<input id="printShowTopicHeading" type="checkbox" />
+<span>Show topic heading in question paper</span>
+</label>
+</form>
+<div id="printPreviewMeta" class="preview-surface preview-surface--small">
+</div>
+<div id="livePrintPreviewPanel" class="preview-surface preview-surface--small">
+</div>
+<div id="printFormatActions" class="entity-actions exam-actions-row">
+</div>
+<div id="resultAnalyzerPanel" class="preview-surface preview-surface--small" hidden>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true">
+</div>
+<script src="curriculum.js">
+</script>
+<script src="firebase-config.js"></script>
+<script src="app.js">
+</script>
+</body>
+</html>

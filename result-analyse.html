@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Result Analyse | MegaPrep CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="result-analyse">
+<div class="page-shell">
+<header class="topbar topbar--dashboard">
+<div class="brand brand--dashboard"><div class="logo-mark logo-mark--3d"><span>M</span></div><div class="brand-copy brand-copy--stacked"><span class="brand-name">MegaPrep</span><span class="brand-tag">Result Analyse</span></div></div>
+<div class="topbar-actions topbar-actions--dashboard">
+<button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button>
+<a class="topbar-button topbar-button--ghost" href="handle-exams.html">Handle Exams</a>
+<a class="topbar-button topbar-button--solid" href="students.html">Students</a>
+</div>
+</header>
+<main class="content-area app-layout">
+<section class="workspace-shell">
+<div class="panel-card">
+<div class="panel-card__header"><h3>OMR Result Processing</h3><p>Upload multiple OMR sheets and process class-wise results.</p></div>
+<form id="resultAnalyseForm" class="app-form app-form--single">
+<label>Exam<select id="resultExamSelect"></select></label>
+<label class="toolbar-button toolbar-button--file">Upload OMR Images (multiple)<input id="resultOmrImages" type="file" accept="image/*" multiple hidden /></label>
+<div id="resultOmrPreview" class="entity-list"></div>
+<div class="app-form__actions"><button type="button" class="submit-button" id="processOmrResultBtn">Process Result</button><button type="button" class="toolbar-button" id="exportOmrResultBtn">Export XLSX</button></div>
+</form>
+<div id="resultAnalyseOutput" class="preview-surface preview-surface--small"></div>
+</div>
+</section>
+</main>
+</div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+<script src="curriculum.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

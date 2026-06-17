@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Analytics | MegaPrep CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js">
+</script>
+</head>
+<body data-page="analytics">
+<div class="page-shell">
+<header class="topbar topbar--dashboard">
+<div class="topbar-glow" aria-hidden="true">
+</div>
+<div class="brand brand--dashboard">
+<div class="logo-mark logo-mark--3d" aria-hidden="true">
+<span>M</span>
+</div>
+<div class="brand-copy brand-copy--stacked">
+<span class="brand-name">MegaPrep</span>
+<span class="brand-tag">Analytics</span>
+</div>
+</div>
+<div class="topbar-actions topbar-actions--dashboard">
+<button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button>
+<a class="topbar-button topbar-button--ghost" href="index.html">Dashboard</a>
+<a class="topbar-button topbar-button--solid" href="students.html">Students</a>
+</div>
+</header>
+<main class="content-area app-layout">
+<section class="workspace-shell">
+<div class="workspace-toolbar">
+<div>
+<p class="section-heading__eyebrow">Analytics</p>
+<h2>Attempts & Accuracy</h2>
+</div>
+</div>
+<div class="panel-grid panel-grid--analytics">
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Record Attempt</h3>
+<p>Track exam attempts and question-wise accuracy.</p>
+</div>
+<form id="attemptForm" class="app-form app-form--two-col">
+<label>Exam<select id="attemptExam">
+</select>
+</label>
+<label>Student<select id="attemptStudent">
+</select>
+</label>
+<label>Score<input id="attemptScore" type="number" min="0" placeholder="Score" />
+</label>
+<label>Total Marks<input id="attemptTotal" type="number" min="1" placeholder="Total marks" />
+</label>
+<label class="full-span">Correct Question IDs<textarea id="attemptCorrectIds" rows="3" placeholder="Comma separated question IDs">
+</textarea>
+</label>
+<label class="full-span">Incorrect Question IDs<textarea id="attemptIncorrectIds" rows="3" placeholder="Comma separated question IDs">
+</textarea>
+</label>
+<div class="full-span app-form__actions">
+<button class="submit-button" type="submit">Save Attempt</button>
+</div>
+</form>
+</div>
+<div class="panel-card panel-card--summary">
+<div id="analyticsSummary" class="summary-grid">
+</div>
+</div>
+<div class="panel-card">
+<canvas id="analyticsChart">
+</canvas>
+</div>
+<div class="panel-card">
+<canvas id="accuracyChart">
+</canvas>
+</div>
+</div>
+</section>
+</main>
+</div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true">
+</div>
+<script src="curriculum.js">
+</script>
+<script src="firebase-config.js"></script>
+<script src="app.js">
+</script>
+</body>
+</html>

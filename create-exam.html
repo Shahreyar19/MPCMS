@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create Exam | MegaPrep CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="create-exam">
+<div class="page-shell">
+<header class="topbar topbar--dashboard">
+<div class="topbar-glow" aria-hidden="true">
+</div>
+<div class="brand brand--dashboard">
+<div class="logo-mark logo-mark--3d" aria-hidden="true">
+<span>M</span>
+</div>
+<div class="brand-copy brand-copy--stacked">
+<span class="brand-name">MegaPrep</span>
+<span class="brand-tag">Create Exam</span>
+</div>
+</div>
+<div class="topbar-actions topbar-actions--dashboard">
+<button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button>
+<a class="topbar-button topbar-button--ghost" href="index.html">Dashboard</a>
+<a class="topbar-button topbar-button--solid" href="handle-exams.html">Handle Exams</a>
+</div>
+</header>
+<main class="content-area app-layout">
+<section class="workspace-shell">
+<div class="workspace-toolbar">
+<div>
+<p class="section-heading__eyebrow">Create Exam</p>
+<h2>Exam Builder</h2>
+</div>
+<div class="workspace-actions">
+<button type="button" class="toolbar-button" id="exportDataBtn">Export Data</button>
+<label class="toolbar-button toolbar-button--file">Import Data<input id="importDataFile" type="file" accept="application/json" hidden />
+</label>
+</div>
+</div>
+<div class="panel-grid panel-grid--form">
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Create Exam</h3>
+<p>Choose curriculum, course, exam details, and sections.</p>
+</div>
+<form id="examForm" class="app-form app-form--two-col">
+<input type="hidden" id="examId" />
+<label>Level<select id="examLevel">
+</select>
+</label>
+<label>Group<select id="examGroup">
+</select>
+</label>
+<label>Subject<select id="examSubject">
+</select>
+</label>
+<label>Version<select id="examVersion">
+<option value="Bangla">Bangla Version</option>
+<option value="English">English Version</option>
+</select>
+</label>
+<label>Course<input id="examCourse" required type="text" placeholder="Course name" />
+</label>
+<label>Exam Number<input id="examNumber" required type="text" placeholder="Exam number" />
+</label>
+<label class="full-span">Exam Title<input id="examTitle" required type="text" placeholder="Exam title" />
+</label>
+<label>Duration (minutes)<input id="examDuration" required type="number" min="1" placeholder="Duration" />
+</label>
+<label>Full Marks<input id="examMarks" required type="number" min="1" placeholder="Marks" />
+</label>
+<label>Exam Type<select id="examType">
+<option value="MCQ">MCQ</option>
+<option value="CQ">CQ</option>
+<option value="Mixed">Mixed</option>
+</select>
+</label>
+<label>Exam Date<input id="examDate" type="date" required />
+</label>
+<label>Start Time<input id="examStartTime" type="time" required />
+</label>
+<label>End Time<input id="examEndTime" type="time" required />
+</label>
+<div class="full-span section-builder">
+<div class="section-builder__head">
+<h4>Exam Sections</h4>
+<button id="addSectionBtn" class="toolbar-button" type="button">Add Section</button>
+</div>
+<div id="sectionList" class="dynamic-list">
+</div>
+</div>
+<div class="full-span app-form__actions">
+<button type="submit" class="submit-button">Save & Create Exam</button>
+</div>
+</form>
+</div>
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Saved Exams</h3>
+<p>Review recent exam drafts.</p>
+</div>
+<div id="examSummaryList" class="entity-list">
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true">
+</div>
+<script src="curriculum.js">
+</script>
+<script src="firebase-config.js"></script>
+<script src="app.js">
+</script>
+</body>
+</html>

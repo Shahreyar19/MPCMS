@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Devices | MegaPrep CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="devices">
+<div class="page-shell">
+<header class="topbar topbar--dashboard">
+<div class="topbar-glow" aria-hidden="true">
+</div>
+<div class="brand brand--dashboard">
+<div class="logo-mark logo-mark--3d" aria-hidden="true">
+<span>M</span>
+</div>
+<div class="brand-copy brand-copy--stacked">
+<span class="brand-name">MegaPrep</span>
+<span class="brand-tag">Devices & Sessions</span>
+</div>
+</div>
+<div class="topbar-actions topbar-actions--dashboard">
+<button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button>
+<a class="topbar-button topbar-button--ghost" href="index.html">Dashboard</a>
+<a class="topbar-button topbar-button--solid" href="passwords.html">Passwords</a>
+</div>
+</header>
+<main class="content-area app-layout">
+<section class="workspace-shell">
+<div class="workspace-toolbar">
+<div>
+<p class="section-heading__eyebrow">Security</p>
+<h2>Devices & Sessions</h2>
+</div>
+</div>
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Logged Devices</h3>
+<p>Review recorded sessions and force logout when required.</p>
+</div>
+<div id="deviceList" class="entity-list">
+</div>
+</div>
+</section>
+</main>
+</div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true">
+</div>
+<script src="curriculum.js">
+</script>
+<script src="firebase-config.js"></script>
+<script src="app.js">
+</script>
+</body>
+</html>

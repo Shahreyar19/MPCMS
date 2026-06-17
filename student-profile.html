@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Student Profile | MegaPrep CMS</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="student-profile">
+<div class="page-shell">
+<header class="topbar topbar--dashboard">
+<div class="brand brand--dashboard"><div class="logo-mark logo-mark--3d"><span>M</span></div><div class="brand-copy brand-copy--stacked"><span class="brand-name">MegaPrep</span><span class="brand-tag">Student Profile</span></div></div>
+<div class="topbar-actions topbar-actions--dashboard"><button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button><a class="topbar-button topbar-button--ghost" href="students.html">Students</a><button id="printStudentMarksheetBtn" class="topbar-button topbar-button--solid" type="button">Print Selected Marksheet (PDF)</button></div>
+</header>
+<main class="content-area app-layout">
+<section class="workspace-shell">
+<div id="studentProfilePage" class="panel-card"></div>
+</section>
+</main>
+</div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+<script src="curriculum.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

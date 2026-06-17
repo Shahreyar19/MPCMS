@@ -1,0 +1,17 @@
+{
+  "name": "qm-codex-latest",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "install:frontend": "npm install --prefix omr-system/frontend",
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "dev:omr": "npm run dev --prefix omr-system/frontend",
+    "build": "node scripts/build-public.mjs && npm run build --prefix omr-system/frontend",
+    "build:main": "node scripts/build-public.mjs",
+    "build:omr": "npm run build --prefix omr-system/frontend",
+    "preview:omr": "npm run preview --prefix omr-system/frontend"
+  },
+  "devDependencies": {
+    "vite": "^8.0.16"
+  }
+}

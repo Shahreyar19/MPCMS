@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Students | MegaPrep CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="students">
+<div class="page-shell">
+<header class="topbar topbar--dashboard">
+<div class="topbar-glow" aria-hidden="true">
+</div>
+<div class="brand brand--dashboard">
+<div class="logo-mark logo-mark--3d" aria-hidden="true">
+<span>M</span>
+</div>
+<div class="brand-copy brand-copy--stacked">
+<span class="brand-name">MegaPrep</span>
+<span class="brand-tag">Students</span>
+</div>
+</div>
+<div class="topbar-actions topbar-actions--dashboard">
+<button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button>
+<a class="topbar-button topbar-button--ghost" href="index.html">Dashboard</a>
+<a class="topbar-button topbar-button--solid" href="analytics.html">Analytics</a>
+</div>
+</header>
+<main class="content-area app-layout">
+<section class="workspace-shell">
+<div class="workspace-toolbar">
+<div>
+<p class="section-heading__eyebrow">Students</p>
+<h2>Student Manager</h2>
+</div>
+</div>
+<div class="panel-grid panel-grid--form">
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Create Student</h3>
+<p>Create student profiles or upload CSV.</p>
+</div>
+<form id="studentForm" class="app-form app-form--two-col">
+<label>Roll Number<input id="studentRollNumber" required type="text" placeholder="Roll number" />
+</label>
+<label>Full name<input id="studentName" required type="text" placeholder="Student name" />
+</label>
+<label>Class<select id="studentClass" required>
+<option value="Class 6">Class 6</option>
+<option value="Class 7">Class 7</option>
+<option value="Class 8">Class 8</option>
+<option value="Class 9">Class 9</option>
+<option value="Class 10">Class 10</option>
+<option value="Class 11">Class 11</option>
+<option value="Class 12">Class 12</option>
+</select>
+</label>
+<label>Institute<input id="studentInstitute" type="text" placeholder="Institute name" />
+</label>
+<label>Phone Number<input id="studentPhone" type="text" placeholder="Phone number" />
+</label>
+<div class="full-span app-form__actions">
+<button class="submit-button" type="submit">Create Student</button>
+</div>
+</form>
+<div class="divider">
+</div>
+<div class="app-form app-form--single">
+<label>Bulk Upload CSV<textarea id="studentCsvText" rows="6" placeholder="roll_number,student_name,class,institute,phone_number">
+</textarea>
+</label>
+<label class="toolbar-button toolbar-button--file">Upload CSV<input id="studentCsvFile" type="file" accept=".csv,text/csv" hidden />
+</label>
+<button id="importStudentsBtn" class="submit-button" type="button">Import Students</button>
+<label class="toolbar-button toolbar-button--file">Upload XLSX<input id="studentXlsxFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden />
+</label>
+<button id="importStudentsXlsxBtn" class="submit-button" type="button">Import XLSX</button>
+</div>
+</div>
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Student Directory</h3>
+</div>
+<label class="student-search">Search Student<input id="studentSearch" type="text" placeholder="Search by name, roll, phone" />
+</label>
+<div class="entity-actions">
+<label>Class Filter<select id="studentClassFilter"><option value="">All Classes</option><option value="Class 6">Class 6</option><option value="Class 7">Class 7</option><option value="Class 8">Class 8</option><option value="Class 9">Class 9</option><option value="Class 10">Class 10</option><option value="Class 11">Class 11</option><option value="Class 12">Class 12</option></select></label>
+<button id="exportStudentsAllBtn" type="button" class="toolbar-button">Export All</button>
+<button id="exportStudentsClassBtn" type="button" class="toolbar-button">Export Class</button>
+</div>
+<div id="studentClassCount" class="muted-copy"></div>
+<div id="studentList" class="entity-list">
+</div>
+<div id="studentProfile" class="preview-surface preview-surface--small"></div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true">
+</div>
+<script src="curriculum.js">
+</script>
+<script src="firebase-config.js"></script>
+<script src="app.js">
+</script>
+</body>
+</html>

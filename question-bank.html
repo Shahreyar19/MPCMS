@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Question Bank | MegaPrep CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+</head>
+<body data-page="question-bank">
+<div class="page-shell">
+<header class="topbar topbar--dashboard">
+<div class="topbar-glow" aria-hidden="true">
+</div>
+<div class="brand brand--dashboard">
+<div class="logo-mark logo-mark--3d" aria-hidden="true">
+<span>M</span>
+</div>
+<div class="brand-copy brand-copy--stacked">
+<span class="brand-name">MegaPrep</span>
+<span class="brand-tag">Question Bank</span>
+</div>
+</div>
+<div class="topbar-actions topbar-actions--dashboard">
+<button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button>
+<a class="topbar-button topbar-button--ghost" href="index.html">Dashboard</a>
+<a class="topbar-button topbar-button--solid" href="handle-exams.html">Handle Exams</a>
+</div>
+</header>
+<main class="content-area app-layout">
+<section class="workspace-shell">
+<div class="workspace-toolbar">
+<div>
+<p class="section-heading__eyebrow">Question Bank</p>
+<h2>Question Builder</h2>
+</div>
+</div>
+<div class="panel-grid panel-grid--question">
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Curriculum & Prompt Builder</h3>
+<p>Select SSC/HSC curriculum, then auto-fill KaTeX-ready prompt text or import structured JSON.</p>
+</div>
+<form id="curriculumPromptForm" class="app-form app-form--two-col">
+<label class="full-span">Target Exam (Optional)<select id="qbExamTarget">
+<option value="">Only save in Question Bank</option>
+</select>
+</label>
+<label>Level<select id="qbLevel">
+</select>
+</label>
+<label>Group<select id="qbGroup">
+</select>
+</label>
+<label>Subject<select id="qbSubject">
+</select>
+</label>
+<label>Topic<select id="qbTopic">
+</select>
+</label>
+<label>Version<select id="qbVersion">
+<option value="Bangla">Bangla Version</option>
+<option value="English">English Version</option>
+</select>
+</label>
+<label>Question Type<select id="promptQuestionType">
+<option value="All">All</option>
+<option value="MCQ">MCQ</option>
+<option value="CQ">CQ</option>
+</select>
+</label>
+<label>Difficulty<select id="promptDifficulty">
+<option>Easy</option>
+<option>Medium</option>
+<option>Hard</option>
+</select>
+</label>
+<label class="full-span">Instruction / Prompt<textarea id="jsonPromptText" rows="5" placeholder='{"question":"...","options":[...],"correct":1}'>
+</textarea>
+</label>
+<label class="full-span">OpenAI API Key (for direct ChatGPT generation)<input id="openaiApiKey" type="password" placeholder="sk-..." autocomplete="off" />
+</label>
+<label>OpenAI Model<input id="openaiModel" type="text" value="gpt-4.1-mini" placeholder="gpt-4.1-mini" />
+</label>
+<div class="full-span app-form__actions">
+<button id="generatePromptBtn" type="button" class="toolbar-button">Generate Curriculum Prompt</button>
+<button id="applyPromptBtn" type="button" class="submit-button">Apply Prompt to Editor</button>
+<button id="openChatGptBtn" type="button" class="toolbar-button">Open ChatGPT + Copy Prompt</button>
+<button id="generateWithAiBtn" type="button" class="submit-button">Generate with ChatGPT API</button>
+</div>
+</form>
+<div class="segmented-control" id="questionModeTabs">
+<button type="button" class="segmented-control__btn is-active" data-mode="mcq">MCQ</button>
+<button type="button" class="segmented-control__btn" data-mode="cq">CQ</button>
+<button type="button" class="segmented-control__btn" data-mode="json">JSON Import</button>
+</div>
+<form id="mcqForm" class="app-form mode-panel app-form--single is-active">
+<label>Question Text<textarea id="mcqQuestion" rows="4" placeholder="Write question text with KaTeX LaTeX (e.g., $...$)">
+</textarea>
+</label>
+<label>Explanation<textarea id="mcqExplanation" rows="3" placeholder="Write explanation">
+</textarea>
+</label>
+<div class="field-row">
+<label>Section<input id="mcqSection" type="text" placeholder="Section name" />
+</label>
+<label>Image<input id="mcqImage" type="file" accept="image/*" />
+</label>
+<button id="removeMcqImageBtn" type="button" class="toolbar-button">Remove Question Image</button>
+</div>
+<div class="section-builder">
+<div class="section-builder__head">
+<h4>Options</h4>
+<button id="addOptionBtn" type="button" class="toolbar-button">Add Option</button>
+</div>
+<div id="optionList" class="dynamic-list">
+</div>
+</div>
+<div class="app-form__actions">
+<button type="submit" class="submit-button">Save MCQ</button>
+</div>
+</form>
+<form id="cqForm" class="app-form mode-panel app-form--single">
+<label>Stimulus / Passage<textarea id="cqStimulus" rows="4" placeholder="Write passage or stimulus">
+</textarea>
+</label>
+<label>Image<input id="cqImage" type="file" accept="image/*" />
+</label>
+<button id="removeCqImageBtn" type="button" class="toolbar-button">Remove CQ Image</button>
+<div class="section-builder">
+<div class="section-builder__head">
+<h4>Sub Questions</h4>
+<button id="addSubQuestionBtn" type="button" class="toolbar-button">Add Sub Question</button>
+</div>
+<div id="subQuestionList" class="dynamic-list">
+</div>
+</div>
+<div class="app-form__actions">
+<button type="submit" class="submit-button">Save CQ</button>
+</div>
+</form>
+<div id="jsonImportPanel" class="mode-panel">
+<div class="app-form app-form--single">
+<label>Paste JSON<textarea id="jsonImportText" rows="10" placeholder='{"questions":[...]}'>
+</textarea>
+</label>
+<div class="field-row">
+<label class="checkbox-row checkbox-card"><input id="jsonImportPartWise" type="checkbox" /><span>Import as Part/Section wise (shuffle only inside part)</span></label>
+<label>Default Part Name (optional)<input id="jsonImportDefaultPart" type="text" placeholder="e.g. Physics" /></label>
+</div>
+<div class="field-row">
+<label class="toolbar-button toolbar-button--file">Upload JSON<input id="jsonImportFile" type="file" accept="application/json" hidden />
+</label>
+<button id="importJsonBtn" type="button" class="submit-button">Import Questions</button>
+</div>
+<p id="jsonImportMessage" class="inline-message">
+</p>
+</div>
+</div>
+</div>
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Live Preview</h3>
+<p>KaTeX preview plus saved questions.</p>
+</div>
+<div id="questionPreview" class="preview-surface">
+</div>
+<div class="panel-card__header panel-card__header--sub">
+<h3>Saved Questions</h3>
+</div>
+<form id="questionListFilterForm" class="app-form app-form--two-col">
+<label>Level<select id="qFilterLevel"></select></label>
+<label>Group<select id="qFilterGroup"></select></label>
+<label>Subject<select id="qFilterSubject"></select></label>
+<label>Topic<select id="qFilterTopic"></select></label>
+<label>Version<select id="qFilterVersion"><option value="">All</option><option value="Bangla">Bangla Version</option><option value="English">English Version</option></select></label>
+<label>Question Type<select id="qFilterType"><option value="">All</option><option value="mcq">MCQ</option><option value="cq">CQ</option></select></label>
+<label>Search<input id="qFilterSearch" type="search" placeholder="Search question / option / answer" /></label>
+<div class="full-span app-form__actions">
+<button id="qFilterResetBtn" type="button" class="toolbar-button">Reset Filters</button>
+<button id="qDeleteFilteredBtn" type="button" class="toolbar-button toolbar-button--danger">Delete Filtered</button>
+<span id="qFilterResultCount" class="muted-copy" aria-live="polite"></span>
+</div>
+</form>
+<div id="questionList" class="entity-list">
+</div>
+<div id="questionListPagination" class="entity-actions"></div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true">
+</div>
+<script src="curriculum.js">
+</script>
+<script src="firebase-config.js"></script>
+<script src="app.js">
+</script>
+</body>
+</html>
