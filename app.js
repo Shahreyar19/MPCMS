@@ -60,6 +60,7 @@
   let cloudLifecycleBound = false;
   let cloudWorkspaceVersion = 0;
   let cloudSyncBlocked = false;
+  let permissionObserverBound = false;
   let supabaseClientPromise = null;
   let openCvPromise = null;
   const QUESTION_LIST_PAGE_SIZE = 50;
@@ -95,6 +96,7 @@
     bindExportImport();
     ensureCurrentDevice();
     renderGlobalMeta();
+    bindPermissionVisibilityObserver();
     switch (document.body.dataset.page) {
       case 'dashboard': initDashboard(); break;
       case 'create-exam': initCreateExamPage(); break;
@@ -523,7 +525,7 @@
     const adminNavLink = document.getElementById('navAdminLogin');
     const session = getSession();
     if (sessionBadge) sessionBadge.textContent = session ? `${session.role} session active` : 'No active admin session';
-    if (storageBadge) storageBadge.textContent = `${state.exams.length} exams · ${state.questions.length} questions · ${state.students.length} students`;
+    if (storageBadge) storageBadge.textContent = `${state.exams.length} exams | ${state.questions.length} questions | ${state.students.length} students`;
     if (adminNavLink) {
       if (isAdminLike(session)) {
         adminNavLink.textContent = 'Logout';
@@ -545,12 +547,36 @@
     const session = getSession();
     ADMIN_MODULES.forEach((module) => {
       root.querySelectorAll(`[href="${module.href}"], [data-permission="${module.key}"]`).forEach((node) => {
-        node.hidden = !hasAdminPermission(module.key, session);
+        setPermissionNodeVisibility(node, hasAdminPermission(module.key, session));
       });
     });
     root.querySelectorAll('[data-super-admin-only], [href="super-admin.html"]').forEach((node) => {
-      node.hidden = !isSuperAdmin(session);
+      setPermissionNodeVisibility(node, isSuperAdmin(session));
     });
+  }
+
+  function setPermissionNodeVisibility(node, isAllowed) {
+    const shouldHide = !isAllowed;
+    node.hidden = shouldHide;
+    node.classList.toggle('is-permission-hidden', shouldHide);
+    node.setAttribute('aria-hidden', shouldHide ? 'true' : 'false');
+    if ('disabled' in node) node.disabled = shouldHide;
+    if (node.tagName === 'A') {
+      if (shouldHide) {
+        node.setAttribute('aria-disabled', 'true');
+        node.tabIndex = -1;
+      } else {
+        node.removeAttribute('aria-disabled');
+        node.removeAttribute('tabindex');
+      }
+    }
+  }
+
+  function bindPermissionVisibilityObserver() {
+    if (permissionObserverBound || document.body.dataset.page === 'solution-download') return;
+    permissionObserverBound = true;
+    const observer = new MutationObserver(() => applyPermissionVisibility());
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   async function logoutAdminSession() {
@@ -3420,7 +3446,7 @@
   }
 
   function buildResponsiveSolutionHtml(html) {
-    const mobileCss = `@media screen and (max-width: 720px){body{padding:6px!important}.paper{max-width:none!important;width:auto!important;margin:0 0 10px!important;padding:10px!important;border-radius:10px!important}.question-grid{column-count:1!important}.board-head-grid{display:block!important}.board-col,.board-col--center{text-align:left!important}.board-col__spacer{display:none!important}.header-logo{position:static!important;width:42px!important;height:42px!important;margin:4px!important}.solution-qr--header{width:auto!important}.option-list--grid{grid-template-columns:1fr!important}.print-question h3{font-size:14px!important}.option-list li{font-size:13px!important}.answer-block,.explanation-block{font-size:12px!important}}`;
+    const mobileCss = `html,body{max-width:100%;overflow-x:hidden}.paper *{max-width:100%;box-sizing:border-box}img{max-width:100%;height:auto}@media screen and (max-width: 720px){body{padding:6px!important}.paper{max-width:none!important;width:auto!important;margin:0 0 10px!important;padding:10px!important;border-radius:10px!important}.question-grid{column-count:1!important}.board-head-grid{display:block!important}.board-col,.board-col--center{text-align:left!important}.board-col__spacer{display:none!important}.header-logo{position:static!important;width:42px!important;height:42px!important;margin:4px!important}.solution-qr--header{width:auto!important}.option-list--grid{grid-template-columns:1fr!important}.print-question{break-inside:auto!important;page-break-inside:auto!important}.print-question h3{font-size:14px!important;line-height:1.4!important}.option-list li{font-size:13px!important;line-height:1.45!important}.answer-block,.explanation-block{font-size:12px!important;line-height:1.45!important}}`;
     return String(html || '').replace('</style>', `${mobileCss}</style>`);
   }
 
@@ -4523,3 +4549,4 @@
   function escapeHtml(value = '') { return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function escapeAttr(value = '') { return escapeHtml(value); }
 })();
+

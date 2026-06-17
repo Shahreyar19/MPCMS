@@ -63,6 +63,12 @@ begin
   where owner_id is null;
 end $$;
 
+delete from public.app_settings newer
+using public.app_settings older
+where newer.owner_id = older.owner_id
+  and newer.owner_id is not null
+  and newer.id > older.id;
+
 create unique index if not exists app_settings_owner_unique
 on public.app_settings (owner_id);
 
