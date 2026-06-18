@@ -9,6 +9,7 @@ const files = [
   'analytics.html',
   'app.js',
   'auth.js',
+  'certificate-generator.html',
   'create-exam.html',
   'curriculum.js',
   'devices.html',

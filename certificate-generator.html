@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Certificate Generator | MegaPrep CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="certificate-generator">
+<div class="page-shell">
+<header class="topbar topbar--dashboard">
+<div class="topbar-glow" aria-hidden="true"></div>
+<div class="brand brand--dashboard">
+<div class="logo-mark logo-mark--3d" aria-hidden="true"><span>M</span></div>
+<div class="brand-copy brand-copy--stacked">
+<span class="brand-name">MegaPrep</span>
+<span class="brand-tag">Certificate Generator</span>
+</div>
+</div>
+<div class="topbar-actions topbar-actions--dashboard">
+<button class="topbar-button topbar-button--ghost" id="themeToggle" type="button">Toggle Theme</button>
+<a class="topbar-button topbar-button--ghost" href="index.html">Dashboard</a>
+<a class="topbar-button topbar-button--solid" href="students.html">Students</a>
+</div>
+</header>
+<main class="content-area app-layout">
+<section class="workspace-shell">
+<div class="workspace-toolbar">
+<div>
+<p class="section-heading__eyebrow">Certificates</p>
+<h2>Certificate Generator</h2>
+</div>
+<div class="workspace-actions">
+<button id="generateCertificateBtn" class="toolbar-button" type="button">Generate</button>
+<button id="printCertificateBtn" class="submit-button" type="button">Download PDF</button>
+</div>
+</div>
+<div class="panel-grid panel-grid--certificate">
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Design & Recipient</h3>
+<p>Choose a template, edit the text, then generate a certificate for one student or a full XLSX list.</p>
+</div>
+<form id="certificateForm" class="app-form app-form--two-col">
+<label>Template<select id="certificateTemplate"></select></label>
+<label>Accent Color<input id="certificateAccentColor" type="color" /></label>
+<label class="toolbar-button toolbar-button--file">Upload Logo<input id="certificateLogoFile" type="file" accept="image/*" hidden /></label>
+<label>Logo Size<input id="certificateLogoSize" type="range" min="16" max="70" step="1" /></label>
+<label class="checkbox-row checkbox-card"><input id="certificateShowWatermark" type="checkbox" /><span>Show logo watermark</span></label>
+<label class="full-span">Organization<input id="certificateOrganization" type="text" /></label>
+<label class="full-span">Certificate Title<input id="certificateTitle" type="text" /></label>
+<label class="full-span">Subtitle<input id="certificateSubtitle" type="text" /></label>
+<label class="full-span">Body<textarea id="certificateBody" rows="3"></textarea></label>
+<label>Name<input id="certificateRecipientName" type="text" /></label>
+<label>Roll<input id="certificateRoll" type="text" /></label>
+<label class="full-span">School<input id="certificateSchool" type="text" /></label>
+<label>Left Signature<input id="certificateFooterLeft" type="text" /></label>
+<label>Right Signature<input id="certificateFooterRight" type="text" /></label>
+<label class="toolbar-button toolbar-button--file">Upload Left Signature<input id="certificateLeftSignatureFile" type="file" accept="image/png,image/*" hidden /></label>
+<label class="toolbar-button toolbar-button--file">Upload Right Signature<input id="certificateRightSignatureFile" type="file" accept="image/png,image/*" hidden /></label>
+<label>Issue Date<input id="certificateIssueDate" type="date" /></label>
+</form>
+<div class="divider"></div>
+<div class="app-form app-form--single">
+<label class="toolbar-button toolbar-button--file">Upload XLSX for Bulk Certificates<input id="certificateXlsxFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden /></label>
+<div class="entity-actions">
+<button id="downloadCertificateTemplateBtn" class="toolbar-button" type="button">Download XLSX Template</button>
+<button id="printBulkCertificateBtn" class="submit-button" type="button">Download Bulk PDF</button>
+<button id="clearBulkCertificateBtn" class="toolbar-button" type="button">Clear Bulk List</button>
+</div>
+<p class="muted-copy">XLSX columns: name, roll, school. Also accepts student_name, roll_number, institute.</p>
+</div>
+</div>
+<div class="panel-card">
+<div class="panel-card__header">
+<h3>Live Preview</h3>
+<p>Click certificate text directly to edit it.</p>
+</div>
+<div id="certificatePreview" class="certificate-preview"></div>
+<div class="panel-card__header panel-card__header--sub">
+<h3>Bulk List</h3>
+</div>
+<div id="certificateBulkList" class="entity-list"></div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+<script src="curriculum.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

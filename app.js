@@ -40,6 +40,22 @@
         compactMode: true,
         showTopicHeading: true,
       },
+      certificateConfig: {
+        template: 'classic',
+        organization: 'MegaPrep Academy',
+        title: 'Certificate of Achievement',
+        subtitle: 'This certificate is proudly presented to',
+        body: 'for outstanding performance and dedication.',
+        footerLeft: 'Director',
+        footerRight: 'Principal',
+        issueDate: new Date().toISOString().slice(0, 10),
+        accentColor: '#2563eb',
+        logoData: '',
+        logoSize: 24,
+        showWatermark: true,
+        leftSignatureData: '',
+        rightSignatureData: '',
+      },
     },
   };
 
@@ -71,9 +87,18 @@
     { key: 'students', label: 'Students', page: 'students', href: 'students.html' },
     { key: 'scan_omr', label: 'Scan OMR', page: 'scan-omr', href: 'scan-omr.html' },
     { key: 'analytics', label: 'Analytics', page: 'analytics', href: 'analytics.html' },
+    { key: 'certificate_generator', label: 'Certificate Generator', page: 'certificate-generator', href: 'certificate-generator.html' },
     { key: 'devices', label: 'Devices', page: 'devices', href: 'devices.html' },
     { key: 'passwords', label: 'Password', page: 'passwords', href: 'passwords.html' },
   ];
+  const CERTIFICATE_TEMPLATES = {
+    classic: { label: 'Classic Honor', className: 'cert-template--classic' },
+    modern: { label: 'Modern Blue', className: 'cert-template--modern' },
+    academic: { label: 'Academic Gold', className: 'cert-template--academic' },
+    emerald: { label: 'Emerald Prestige', className: 'cert-template--emerald' },
+    crimson: { label: 'Crimson Award', className: 'cert-template--crimson' },
+    monochrome: { label: 'Monochrome Elite', className: 'cert-template--monochrome' },
+  };
   const PAGE_PERMISSION = {
     ...Object.fromEntries(ADMIN_MODULES.map((module) => [module.page, module.key])),
     'result-analyse': 'analytics',
@@ -106,6 +131,7 @@
       case 'students': initStudentsPage(); break;
       case 'result-analyse': initResultAnalysePage(); break;
       case 'scan-omr': initScanOmrPage(); break;
+      case 'certificate-generator': initCertificateGeneratorPage(); break;
       case 'student-profile': initStudentProfilePage(); break;
       case 'analytics': initAnalyticsPage(); break;
       case 'devices': initDevicesPage(); break;
@@ -311,6 +337,7 @@
         ...structuredClone(defaultState).settings,
         ...(saved.settings || {}),
         printConfig: { ...structuredClone(defaultState).settings.printConfig, ...(saved.settings?.printConfig || {}) },
+        certificateConfig: { ...structuredClone(defaultState).settings.certificateConfig, ...(saved.settings?.certificateConfig || {}) },
       },
     };
   }
@@ -3779,6 +3806,304 @@
 
   function findExam(id) { return state.exams.find((item) => item.id === id); }
 
+  function initCertificateGeneratorPage() {
+    const form = document.getElementById('certificateForm');
+    const templateSelect = document.getElementById('certificateTemplate');
+    const xlsxInput = document.getElementById('certificateXlsxFile');
+    const logoInput = document.getElementById('certificateLogoFile');
+    const leftSignatureInput = document.getElementById('certificateLeftSignatureFile');
+    const rightSignatureInput = document.getElementById('certificateRightSignatureFile');
+    if (!form || !templateSelect) return;
+    const config = getCertificateConfig();
+    templateSelect.innerHTML = Object.entries(CERTIFICATE_TEMPLATES).map(([key, item]) => `<option value="${key}">${escapeHtml(item.label)}</option>`).join('');
+    setCertificateFieldValues(config);
+    form.querySelectorAll('input, textarea, select').forEach((input) => input.addEventListener('input', () => {
+      saveCertificateConfigFromForm();
+      renderCertificatePreview();
+    }));
+    logoInput?.addEventListener('change', handleCertificateLogoUpload);
+    leftSignatureInput?.addEventListener('change', (event) => handleCertificateSignatureUpload(event, 'leftSignatureData'));
+    rightSignatureInput?.addEventListener('change', (event) => handleCertificateSignatureUpload(event, 'rightSignatureData'));
+    document.getElementById('generateCertificateBtn')?.addEventListener('click', () => renderCertificatePreview());
+    document.getElementById('downloadCertificateTemplateBtn')?.addEventListener('click', downloadCertificateXlsxTemplate);
+    document.getElementById('printCertificateBtn')?.addEventListener('click', () => printCertificates([buildCertificateRecipientFromForm()], getCertificateConfig()));
+    document.getElementById('printBulkCertificateBtn')?.addEventListener('click', () => {
+      const rows = getCertificateBulkRows();
+      if (!rows.length) return showToast('Upload an XLSX file first.', 'error');
+      printCertificates(rows, getCertificateConfig());
+    });
+    document.getElementById('clearBulkCertificateBtn')?.addEventListener('click', () => {
+      sessionStorage.removeItem('megaprep-certificate-bulk-v1');
+      if (xlsxInput) xlsxInput.value = '';
+      renderCertificateBulkList([]);
+      showToast('Bulk certificate list cleared.');
+    });
+    xlsxInput?.addEventListener('change', importCertificateBulkXlsx);
+    document.getElementById('certificatePreview')?.addEventListener('input', syncCertificatePreviewToConfig);
+    window.addEventListener('resize', scaleCertificatePreview);
+    renderCertificatePreview();
+    renderCertificateBulkList(getCertificateBulkRows());
+  }
+
+  function getCertificateConfig() {
+    const base = structuredClone(defaultState).settings.certificateConfig;
+    return { ...base, ...(state.settings.certificateConfig || {}) };
+  }
+
+  function setCertificateFieldValues(config) {
+    const fields = {
+      certificateTemplate: config.template,
+      certificateOrganization: config.organization,
+      certificateTitle: config.title,
+      certificateSubtitle: config.subtitle,
+      certificateBody: config.body,
+      certificateFooterLeft: config.footerLeft,
+      certificateFooterRight: config.footerRight,
+      certificateIssueDate: config.issueDate,
+      certificateAccentColor: config.accentColor,
+      certificateLogoSize: String(config.logoSize || 24),
+      certificateShowWatermark: config.showWatermark ? 'checked' : '',
+      certificateRecipientName: 'Student Name',
+      certificateRoll: 'Roll Number',
+      certificateSchool: 'School Name',
+    };
+    Object.entries(fields).forEach(([id, value]) => {
+      const node = document.getElementById(id);
+      if (!node) return;
+      if (node.type === 'checkbox') node.checked = value === 'checked';
+      else node.value = value || '';
+    });
+  }
+
+  function saveCertificateConfigFromForm() {
+    const previous = getCertificateConfig();
+    state.settings.certificateConfig = {
+      template: document.getElementById('certificateTemplate')?.value || 'classic',
+      organization: document.getElementById('certificateOrganization')?.value.trim() || '',
+      title: document.getElementById('certificateTitle')?.value.trim() || '',
+      subtitle: document.getElementById('certificateSubtitle')?.value.trim() || '',
+      body: document.getElementById('certificateBody')?.value.trim() || '',
+      footerLeft: document.getElementById('certificateFooterLeft')?.value.trim() || '',
+      footerRight: document.getElementById('certificateFooterRight')?.value.trim() || '',
+      issueDate: document.getElementById('certificateIssueDate')?.value || '',
+      accentColor: document.getElementById('certificateAccentColor')?.value || '#2563eb',
+      logoData: previous.logoData || '',
+      logoSize: Math.max(16, Math.min(70, Number(document.getElementById('certificateLogoSize')?.value || previous.logoSize || 24))),
+      showWatermark: document.getElementById('certificateShowWatermark')?.checked !== false,
+      leftSignatureData: previous.leftSignatureData || '',
+      rightSignatureData: previous.rightSignatureData || '',
+    };
+    saveState();
+  }
+
+  async function handleCertificateLogoUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const logoData = await readImageAsResizedDataUrl(file, 520, 0.86);
+      const config = getCertificateConfig();
+      state.settings.certificateConfig = { ...config, logoData };
+      saveState();
+      renderCertificatePreview();
+      showToast('Certificate logo uploaded.');
+    } catch (error) {
+      showToast(error?.message || 'Logo upload failed.', 'error');
+    }
+  }
+
+  async function handleCertificateSignatureUpload(event, key) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const signatureData = await readImageAsResizedDataUrl(file, 620, 0.9);
+      const config = getCertificateConfig();
+      state.settings.certificateConfig = { ...config, [key]: signatureData };
+      saveState();
+      renderCertificatePreview();
+      showToast('Signature uploaded.');
+    } catch (error) {
+      showToast(error?.message || 'Signature upload failed.', 'error');
+    }
+  }
+
+  function readImageAsResizedDataUrl(file, maxSize = 520, quality = 0.86) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Could not read image file.'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Invalid image file.'));
+        img.onload = () => {
+          const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/png', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function buildCertificateRecipientFromForm() {
+    return {
+      name: document.getElementById('certificateRecipientName')?.value.trim() || 'Student Name',
+      roll: document.getElementById('certificateRoll')?.value.trim() || 'Roll Number',
+      school: document.getElementById('certificateSchool')?.value.trim() || 'School Name',
+    };
+  }
+
+  function renderCertificatePreview() {
+    const target = document.getElementById('certificatePreview');
+    if (!target) return;
+    target.innerHTML = `<div class="certificate-preview__stage">${buildCertificateMarkup(buildCertificateRecipientFromForm(), getCertificateConfig(), { editable: true })}</div>`;
+    scaleCertificatePreview();
+  }
+
+  function scaleCertificatePreview() {
+    const target = document.getElementById('certificatePreview');
+    const stage = target?.querySelector('.certificate-preview__stage');
+    if (!target || !stage) return;
+    stage.style.transform = 'scale(1)';
+    const availableWidth = Math.max(1, target.clientWidth - 24);
+    const scale = Math.min(1, availableWidth / stage.offsetWidth);
+    stage.style.transform = `scale(${scale})`;
+    target.style.height = `${Math.ceil(stage.offsetHeight * scale) + 24}px`;
+  }
+
+  function syncCertificatePreviewToConfig(event) {
+    const node = event.target.closest('[data-cert-edit]');
+    if (!node) return;
+    const key = node.dataset.certEdit;
+    const value = node.textContent.trim();
+    const map = {
+      organization: 'certificateOrganization',
+      title: 'certificateTitle',
+      subtitle: 'certificateSubtitle',
+      body: 'certificateBody',
+      footerLeft: 'certificateFooterLeft',
+      footerRight: 'certificateFooterRight',
+      name: 'certificateRecipientName',
+      roll: 'certificateRoll',
+      school: 'certificateSchool',
+    };
+    const input = document.getElementById(map[key]);
+    if (input) input.value = value;
+    if (!['name', 'roll', 'school'].includes(key)) saveCertificateConfigFromForm();
+  }
+
+  async function importCertificateBulkXlsx(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const XLSX = await ensureXlsxLib();
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+      .map((row) => ({
+        name: String(row.name || row.Name || row.student_name || row.Student || '').trim(),
+        roll: String(row.roll || row.Roll || row.roll_number || row.RollNumber || '').trim(),
+        school: String(row.school || row.School || row.institute || row.Institute || row.school_name || '').trim(),
+      }))
+      .filter((row) => row.name || row.roll || row.school);
+    sessionStorage.setItem('megaprep-certificate-bulk-v1', JSON.stringify(rows));
+    renderCertificateBulkList(rows);
+    showToast(`${rows.length} certificate rows imported.`);
+  }
+
+  async function downloadCertificateXlsxTemplate() {
+    const XLSX = await ensureXlsxLib();
+    const rows = [
+      { name: 'Student Name 1', roll: '101', school: 'School Name' },
+      { name: 'Student Name 2', roll: '102', school: 'School Name' },
+    ];
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, sheet, 'Certificate Data');
+    XLSX.writeFile(book, 'certificate-bulk-template.xlsx');
+  }
+
+  function getCertificateBulkRows() {
+    try {
+      return JSON.parse(sessionStorage.getItem('megaprep-certificate-bulk-v1') || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  function renderCertificateBulkList(rows) {
+    const target = document.getElementById('certificateBulkList');
+    if (!target) return;
+    if (!rows.length) {
+      target.innerHTML = emptyState('No bulk certificate data loaded.');
+      return;
+    }
+    target.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Roll</th><th>School</th></tr></thead><tbody>${rows.slice(0, 50).map((row) => `<tr><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.roll)}</td><td>${escapeHtml(row.school)}</td></tr>`).join('')}</tbody></table></div><p class="muted-copy">${rows.length} row${rows.length === 1 ? '' : 's'} ready for PDF generation.</p>`;
+  }
+
+  function buildCertificateMarkup(recipient, config, options = {}) {
+    const template = CERTIFICATE_TEMPLATES[config.template] || CERTIFICATE_TEMPLATES.classic;
+    const editableAttr = options.editable ? ' contenteditable="true" spellcheck="false"' : '';
+    const edit = (key, value) => `<span data-cert-edit="${key}"${editableAttr}>${escapeHtml(value || '')}</span>`;
+    const logoMarkup = config.logoData ? `<img class="certificate-logo" src="${escapeAttr(config.logoData)}" alt="" />` : '';
+    const watermarkMarkup = config.logoData && config.showWatermark !== false ? `<img class="certificate-watermark" src="${escapeAttr(config.logoData)}" alt="" />` : '';
+    const leftSignature = config.leftSignatureData ? `<img class="certificate-signature-img" src="${escapeAttr(config.leftSignatureData)}" alt="" />` : '';
+    const rightSignature = config.rightSignatureData ? `<img class="certificate-signature-img" src="${escapeAttr(config.rightSignatureData)}" alt="" />` : '';
+    const logoSize = Math.max(16, Math.min(70, Number(config.logoSize || 24)));
+    return `<article class="certificate-sheet ${template.className}" style="--cert-accent:${escapeAttr(config.accentColor || '#2563eb')};--cert-logo-size:${logoSize}mm">
+      <div class="certificate-art certificate-art--top"></div>
+      <div class="certificate-art certificate-art--bottom"></div>
+      <div class="certificate-art certificate-art--gold-top"></div>
+      <div class="certificate-art certificate-art--gold-bottom"></div>
+      <div class="certificate-medal"><span>1</span></div>
+      ${watermarkMarkup}
+      <div class="certificate-sheet__ring"></div>
+      <div class="certificate-sheet__content">
+        ${logoMarkup}
+        <p class="certificate-org">${edit('organization', config.organization)}</p>
+        <h1>${edit('title', config.title)}</h1>
+        <p class="certificate-subtitle">${edit('subtitle', config.subtitle)}</p>
+        <h2>${edit('name', recipient.name)}</h2>
+        <div class="certificate-line"></div>
+        <p class="certificate-body">${edit('body', config.body)}</p>
+        <div class="certificate-meta">
+          <span><strong>Roll</strong>${edit('roll', recipient.roll)}</span>
+          <span><strong>School</strong>${edit('school', recipient.school)}</span>
+          <span><strong>Date</strong>${escapeHtml(config.issueDate || '')}</span>
+        </div>
+        <div class="certificate-signatures">
+          <span class="certificate-signature-slot">${leftSignature}<i class="certificate-signature-line"></i>${edit('footerLeft', config.footerLeft)}</span>
+          <span class="certificate-signature-slot">${rightSignature}<i class="certificate-signature-line"></i>${edit('footerRight', config.footerRight)}</span>
+        </div>
+      </div>
+    </article>`;
+  }
+
+  function buildCertificateDocument(recipients, config) {
+    const pages = recipients.map((recipient) => buildCertificateMarkup(recipient, config)).join('');
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Certificates</title><style>${buildCertificatePrintCss()}</style></head><body>${pages}</body></html>`;
+  }
+
+  function buildCertificatePrintCss() {
+    return `@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{margin:0;background:#fff;font-family:Georgia,'Times New Roman',serif;color:#08253d}.certificate-sheet{width:281mm;height:194mm;margin:0 auto;page-break-after:always;break-after:page;position:relative;display:grid;place-items:center;overflow:hidden;border:10px solid #071f35;background:linear-gradient(45deg,rgba(7,31,53,.035) 25%,transparent 25% 50%,rgba(7,31,53,.035) 50% 75%,transparent 75%) 0 0/18px 18px,linear-gradient(135deg,#fff,#fbfdff 62%,#f7f2dc)}.certificate-sheet:last-child{page-break-after:auto;break-after:auto}.certificate-sheet:before,.certificate-sheet:after{content:"";position:absolute;inset:8mm;border:3px solid #08253d;pointer-events:none}.certificate-sheet:after{inset:13mm;border:1px solid rgba(181,145,47,.62)}.certificate-sheet__ring{position:absolute;inset:auto 15mm 15mm auto;width:38%;height:1.2%;border:0;border-bottom:4px solid #08253d;border-right:4px solid #08253d;pointer-events:none}.certificate-art{position:absolute;z-index:1;pointer-events:none}.certificate-art--top{width:46%;height:56%;right:-8%;top:-18%;background:#06233b;border-bottom-left-radius:100% 82%;transform:rotate(9deg)}.certificate-art--bottom{width:36%;height:48%;left:-10%;bottom:-17%;background:#06233b;border-top-right-radius:100% 82%;transform:rotate(10deg)}.certificate-art--gold-top{width:46%;height:8%;right:4%;top:8%;background:linear-gradient(90deg,#f6e79a,#b08b23,#fff5bd);border-radius:999px;transform:rotate(22deg);box-shadow:0 10px 0 rgba(176,139,35,.42)}.certificate-art--gold-bottom{width:50%;height:7%;left:-7%;bottom:14%;background:linear-gradient(90deg,#fff5bd,#b08b23,#f6e79a);border-radius:999px;transform:rotate(-24deg);box-shadow:0 -9px 0 rgba(176,139,35,.36)}.certificate-medal{position:absolute;z-index:3;right:11%;top:10%;width:28mm;aspect-ratio:1;display:grid;place-items:center;border-radius:50%;color:#8a5a00;font:800 22px Arial,sans-serif;background:radial-gradient(circle,#fff8cc 0 35%,#e7b92e 36% 58%,#9a6500 59% 62%,#f8dc73 63% 100%);box-shadow:0 12px 24px rgba(15,23,42,.24)}.certificate-medal:before,.certificate-medal:after{content:"";position:absolute;top:72%;width:22%;height:64%;background:linear-gradient(#d71920,#b30f17);z-index:-1}.certificate-medal:before{left:28%;transform:rotate(10deg)}.certificate-medal:after{right:28%;transform:rotate(-10deg)}.certificate-medal span{display:grid;place-items:center;width:58%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff8cf,#d6a52a)}.certificate-sheet__content{position:relative;z-index:4;width:58%;text-align:center}.certificate-logo{position:absolute;left:50%;top:-34mm;width:var(--cert-logo-size,24mm);height:var(--cert-logo-size,24mm);object-fit:contain;display:block;margin:0;transform:translateX(-50%);filter:drop-shadow(0 8px 16px rgba(15,23,42,.14));pointer-events:none}.certificate-watermark{position:absolute;z-index:2;width:30%;max-height:62%;object-fit:contain;opacity:.07;filter:grayscale(1);pointer-events:none}.certificate-org{margin:0 0 6mm;text-transform:uppercase;letter-spacing:.22em;font-size:12px;font-weight:700;font-family:Arial,sans-serif}.certificate-sheet h1{margin:0;color:#08253d;font-family:Arial,sans-serif;font-size:46px;font-weight:800;line-height:.95;text-transform:uppercase;letter-spacing:.04em}.certificate-subtitle{margin:10mm 0 5mm;color:#a5862f;font-family:Arial,sans-serif;font-size:18px;font-weight:800;letter-spacing:.24em;text-transform:uppercase}.certificate-sheet h2{margin:0;font-size:42px}.certificate-line{width:86%;height:4px;background:linear-gradient(90deg,transparent,#08253d 18% 46%,#b08b23 46% 54%,#08253d 54% 82%,transparent);margin:5mm auto 8mm}.certificate-body{font:16px/1.55 Arial,sans-serif;color:#17334c;margin:0 auto 8mm;max-width:170mm}.certificate-meta{display:flex;justify-content:center;gap:8mm;flex-wrap:wrap;margin-bottom:12mm;font-family:Arial,sans-serif}.certificate-meta span{display:grid;gap:2mm;min-width:36mm}.certificate-meta strong{text-transform:uppercase;font-size:9px;color:#64748b;letter-spacing:.12em}.certificate-signatures{display:flex;justify-content:space-between;gap:20mm;margin-top:8mm}.certificate-signatures span{display:flex;flex-direction:column;align-items:center;min-width:54mm;font-family:Arial,sans-serif;font-weight:700}.certificate-signature-line{display:block;width:100%;max-width:58mm;border-top:1px solid #08253d;margin:0 auto 2mm}.certificate-signature-img{display:block;width:44mm;height:14mm;object-fit:contain;margin:0 auto 1.5mm}.cert-template--academic{background:linear-gradient(45deg,rgba(176,137,47,.05) 25%,transparent 25% 50%,rgba(176,137,47,.05) 50% 75%,transparent 75%) 0 0/18px 18px,radial-gradient(circle at center,rgba(255,255,255,.96) 0,rgba(255,250,240,.96) 70%)}.cert-template--academic:before{border-color:#b0892f}.cert-template--academic h1{color:#08253d}.cert-template--academic .certificate-line{background:linear-gradient(90deg,transparent,#08253d 18% 46%,#b0892f 46% 54%,#08253d 54% 82%,transparent)}.cert-template--emerald{border-color:#064e3b;background:linear-gradient(45deg,rgba(6,78,59,.045) 25%,transparent 25% 50%,rgba(6,78,59,.045) 50% 75%,transparent 75%) 0 0/18px 18px,linear-gradient(135deg,#fff,#f0fdf4 64%,#e7f8ef)}.cert-template--emerald .certificate-art--top,.cert-template--emerald .certificate-art--bottom{background:#064e3b}.cert-template--emerald .certificate-line{background:linear-gradient(90deg,transparent,#064e3b 18% 46%,#c7a33a 46% 54%,#064e3b 54% 82%,transparent)}.cert-template--crimson{border-color:#3f0b13;background:linear-gradient(45deg,rgba(127,29,29,.045) 25%,transparent 25% 50%,rgba(127,29,29,.045) 50% 75%,transparent 75%) 0 0/18px 18px,linear-gradient(135deg,#fff,#fff7ed 62%,#fff1f2)}.cert-template--crimson .certificate-art--top,.cert-template--crimson .certificate-art--bottom{background:#3f0b13}.cert-template--crimson .certificate-line{background:linear-gradient(90deg,transparent,#3f0b13 18% 46%,#d4af37 46% 54%,#3f0b13 54% 82%,transparent)}.cert-template--monochrome{border-color:#111827;background:linear-gradient(45deg,rgba(17,24,39,.04) 25%,transparent 25% 50%,rgba(17,24,39,.04) 50% 75%,transparent 75%) 0 0/18px 18px,linear-gradient(135deg,#fff,#f8fafc 68%,#e5e7eb)}.cert-template--monochrome .certificate-art--top,.cert-template--monochrome .certificate-art--bottom{background:#111827}.cert-template--monochrome .certificate-art--gold-top,.cert-template--monochrome .certificate-art--gold-bottom{background:linear-gradient(90deg,#f8fafc,#6b7280,#fff);box-shadow:0 10px 0 rgba(17,24,39,.2)}.cert-template--monochrome .certificate-medal{filter:grayscale(1)}@media screen{body{background:#e2e8f0;padding:18px}.certificate-sheet{box-shadow:0 18px 60px rgba(15,23,42,.18);margin-bottom:16px}}`;
+  }
+
+  function printCertificates(recipients, config) {
+    const valid = recipients.filter((row) => row.name || row.roll || row.school);
+    if (!valid.length) return showToast('No certificate data found.', 'error');
+    const win = window.open('', '_blank', 'width=1200,height=820');
+    if (!win) return showToast('Popup blocked by browser.', 'error');
+    win.document.write(buildCertificateDocument(valid, config));
+    win.document.close();
+    setTimeout(() => {
+      win.focus();
+      win.print();
+    }, 250);
+  }
+
   function initStudentsPage() {
     document.getElementById('studentForm').addEventListener('submit', saveStudent);
     document.getElementById('studentCsvFile').addEventListener('change', async (e) => { const file = e.target.files?.[0]; if (file) document.getElementById('studentCsvText').value = await file.text(); });
@@ -4549,4 +4874,8 @@
   function escapeHtml(value = '') { return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function escapeAttr(value = '') { return escapeHtml(value); }
 })();
+
+
+
+
 
